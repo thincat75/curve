@@ -27,6 +27,8 @@
 #include <utility>
 #include <algorithm>
 
+#include "include/client/libcurve_define.h"
+#include "src/client/client_common.h"
 #include "src/client/lease_executor.h"
 #include "src/common/net_common.h"
 #include "src/common/string_util.h"
@@ -1334,30 +1336,55 @@ LIBCURVE_ERROR MDSClient::GetChunkServerInfo(const PeerAddr &csAddr,
         }
 
         int statusCode = response.statuscode();
-        LOG_IF(WARNING, statusCode != 0)
-            << "GetChunkServerInfo: errocde = " << statusCode
-            << ", log id = " << cntl->log_id();
-
-        if (statusCode == 0) {
-            const auto &csInfo = response.chunkserverinfo();
-            ChunkServerID csId = csInfo.chunkserverid();
-            std::string internalIp = csInfo.hostip();
-            std::string externalIp = internalIp;
-            if (csInfo.has_externalip()) {
-                externalIp = csInfo.externalip();
-            }
-            uint32_t port = csInfo.port();
-            EndPoint internal;
-            butil::str2endpoint(internalIp.c_str(), port, &internal);
-            EndPoint external;
-            butil::str2endpoint(externalIp.c_str(), port, &external);
-            *chunkserverInfo =
-                CopysetPeerInfo<ChunkServerID>(csId, PeerAddr(internal),
-                                               PeerAddr(external));
-            return LIBCURVE_ERROR::OK;
-        } else {
+        if (statusCode != 0) {
+            LOG(WARNING) << "GetChunkServerInfo: errocde = " << statusCode
+                         << ", log id = " << cntl->log_id();
             return LIBCURVE_ERROR::FAILED;
         }
+
+        const auto& csInfo = response.chunkserverinfo();
+        ChunkServerID csId = csInfo.chunkserverid();
+        std::string internalIp = csInfo.hostip();
+        std::string externalIp = internalIp;
+        if (csInfo.has_externalip()) {
+            externalIp = csInfo.externalip();
+        }
+        EndPoint internal;
+        butil::str2endpoint(internalIp.c_str(), csInfo.port(), &internal);
+        EndPoint external;
+        butil::str2endpoint(externalIp.c_str(), csInfo.port(), &external);
+
+        if (!csInfo.has_ucpinternalep()) {
+            *chunkserverInfo = CopysetPeerInfo<ChunkServerID>(
+                    csId, PeerAddr(internal), PeerAddr(external));
+            return LIBCURVE_ERROR::OK;
+        }
+
+        EndPoint ucpInternal;
+        CHECK_EQ(0, butil::str2endpoint(csInfo.ucpinternalep().ip().c_str(),
+                                        csInfo.ucpinternalep().port(),
+                                        &ucpInternal));
+        ucpInternal.set_ucp();
+
+        if (!csInfo.has_ucpexternalep()) {
+            *chunkserverInfo = CopysetPeerInfo<ChunkServerID>{
+                    csId, PeerAddr(internal), PeerAddr(external),
+                    PeerAddr(ucpInternal), PeerAddr(ucpInternal)};
+            return LIBCURVE_ERROR::OK;
+        }
+
+        EndPoint ucpExternal;
+        CHECK_EQ(0, butil::str2endpoint(csInfo.ucpexternalep().ip().c_str(),
+                                        csInfo.ucpexternalep().port(),
+                                        &ucpExternal));
+        ucpExternal.set_ucp();
+
+        *chunkserverInfo = CopysetPeerInfo<ChunkServerID>{
+                csId, PeerAddr(internal), PeerAddr(external),
+                PeerAddr(std::move(ucpInternal)),
+                PeerAddr(std::move(ucpExternal))};
+
+        return LIBCURVE_ERROR::OK;
     };
     return ReturnError(
         rpcExcutor_.DoRPCTask(task, metaServerOpt_.mdsMaxRetryMS));

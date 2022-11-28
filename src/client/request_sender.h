@@ -28,6 +28,7 @@
 #include <butil/iobuf.h>
 
 #include <string>
+#include <utility>
 
 #include "src/client/client_config.h"
 #include "src/client/client_common.h"
@@ -44,12 +45,10 @@ namespace client {
  */
 class RequestSender {
  public:
-    RequestSender(ChunkServerID chunkServerId,
-                  butil::EndPoint serverEndPoint)
+    RequestSender(ChunkServerID chunkServerId, butil::EndPoint serverEndPoint)
         : chunkServerId_(chunkServerId),
-          serverEndPoint_(serverEndPoint),
-          channel_() {}
-    virtual ~RequestSender() {}
+          serverEndPoint_(std::move(serverEndPoint))
+    {}
 
     int Init(const IOSenderOption& ioSenderOpt);
 

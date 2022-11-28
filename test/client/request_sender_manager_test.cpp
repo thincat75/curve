@@ -49,22 +49,46 @@ TEST(RequestSenderManagerTest, basic_test) {
     }
 }
 
-TEST(RequestSenderManagerTest, fail_test) {
+// TEST(RequestSenderManagerTest, fail_test) {
+//     IOSenderOption ioSenderOpt;
+//     ioSenderOpt.failRequestOpt.chunkserverOPMaxRetry = 3;
+//     ioSenderOpt.failRequestOpt.chunkserverOPRetryIntervalUS = 500;
+//     ioSenderOpt.chunkserverEnableAppliedIndexRead = 1;
+
+//     std::unique_ptr<RequestSenderManager> senderManager(
+//         new RequestSenderManager());
+//     ChunkServerID leaderId = 123456789;
+//     butil::EndPoint leaderAddr;
+//     leaderAddr.ip = {0U};
+//     leaderAddr.port = -1;
+
+//     ASSERT_EQ(nullptr, senderManager->GetOrCreateSender(
+//         leaderId, leaderAddr, ioSenderOpt));
+// }
+
+TEST(RequestSenderManagerTest, UcpTest) {
     IOSenderOption ioSenderOpt;
     ioSenderOpt.failRequestOpt.chunkserverOPMaxRetry = 3;
     ioSenderOpt.failRequestOpt.chunkserverOPRetryIntervalUS = 500;
     ioSenderOpt.chunkserverEnableAppliedIndexRead = 1;
 
-    std::unique_ptr<RequestSenderManager> senderManager(
-        new RequestSenderManager());
-    ChunkServerID leaderId = 123456789;
+    RequestSenderManager senderManager;
+    ChunkServerID leaderId = 1;
     butil::EndPoint leaderAddr;
-    leaderAddr.ip = {0U};
-    leaderAddr.port = -1;
+    ASSERT_EQ(0, butil::str2endpoint("127.0.0.1:8200", &leaderAddr));
 
-    ASSERT_EQ(nullptr, senderManager->GetOrCreateSender(
-        leaderId, leaderAddr, ioSenderOpt));
-}
+    auto tcpSender =
+            senderManager.GetOrCreateSender(leaderId, leaderAddr, ioSenderOpt);
+    ASSERT_NE(nullptr, tcpSender);
+
+    butil::EndPoint leaderAddrUcp = leaderAddr;
+    leaderAddrUcp.set_ucp();
+
+    auto ucpSender = senderManager.GetOrCreateSender(leaderId, leaderAddrUcp,
+                                                     ioSenderOpt);
+    ASSERT_NE(nullptr, ucpSender);
+    ASSERT_NE(tcpSender.get(), ucpSender.get());
+}   
 
 }   // namespace client
 }   // namespace curve

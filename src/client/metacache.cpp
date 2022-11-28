@@ -92,7 +92,8 @@ int MetaCache::GetLeader(LogicPoolID logicPoolId,
                          ChunkServerID* serverId,
                          EndPoint* serverAddr,
                          bool refresh,
-                         FileMetric* fm) {
+                         FileMetric* fm,
+                         bool ucpEndpoint) {
     const auto key = CalcLogicPoolCopysetID(logicPoolId, copysetId);
 
     CopysetInfo<ChunkServerID> targetInfo;
@@ -140,7 +141,7 @@ int MetaCache::GetLeader(LogicPoolID logicPoolId,
         return -1;
     }
 
-    return targetInfo.GetLeaderInfo(serverId, serverAddr);
+    return targetInfo.GetLeaderInfo(serverId, serverAddr, ucpEndpoint);
 }
 
 int MetaCache::UpdateLeaderInternal(LogicPoolID logicPoolId,

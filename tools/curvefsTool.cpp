@@ -54,6 +54,10 @@ const char kInternalIp[] = "internalip";
 const char kInternalPort[] = "internalport";
 const char kExternalIp[] = "externalip";
 const char kExternalPort[] = "externalport";
+const char kUcpInternalIp[] = "ucp_internalip";
+const char kUcpInternalPort[] = "ucp_internalport";
+const char kUcpExternalIp[] = "ucp_externalip";
+const char kUcpExternalPort[] = "ucp_externalport";
 const char kZone[] = "zone";
 const char kPhysicalPool[] = "physicalpool";
 const char kType[] = "type";
@@ -64,6 +68,7 @@ const char kScatterWidth[] = "scatterwidth";
 const char kAllocStatus[] = "allocstatus";
 const char kAllocStatusAllow[] = "allow";
 const char kAllocStatusDeny[] = "deny";
+const char kUseUcp[] = "use_ucp";
 
 using ::curve::common::SplitString;
 
@@ -92,7 +97,7 @@ int CurvefsTools::Init() {
     UpdateFlagsFromConf(&conf);
     SplitString(FLAGS_mds_addr, ",", &mdsAddressStr_);
     if (mdsAddressStr_.size() <= 0) {
-        LOG(ERROR) << "no avaliable mds address.";
+        LOG(ERROR) << "no available mds address.";
         return kRetCodeCommonErr;
     }
 
@@ -109,7 +114,7 @@ int CurvefsTools::Init() {
 
 int CurvefsTools::TryAnotherMdsAddress() {
     if (mdsAddressStr_.size() == 0) {
-        LOG(ERROR) << "no avaliable mds address.";
+        LOG(ERROR) << "no available mds address.";
         return kRetCodeCommonErr;
     }
     mdsAddressIndex_ = (mdsAddressIndex_ + 1) % mdsAddressStr_.size();
@@ -167,6 +172,7 @@ int CurvefsTools::HandleCreateLogicalPool() {
         request.set_userpolicy("{\"aaa\":1}");
         request.set_scatterwidth(lgPool.scatterwidth);
         request.set_status(lgPool.status);
+        request.set_ucpconnection(lgPool.useUcp);
 
         CreateLogicalPoolResponse response;
 
@@ -312,6 +318,27 @@ int CurvefsTools::ReadClusterMap() {
     return 0;
 }
 
+bool SupportUcp(const Json::Value& externalIp,
+                const Json::Value& externalPort,
+                const Json::Value& internalIp,
+                const Json::Value& internalPort ) {
+    // all fields doesn't exists
+    if (!externalIp && !externalPort && !internalIp && !internalPort) {
+        return false;
+    }
+
+    // all fields exists
+    if (externalIp && externalPort && internalIp && internalPort) {
+        if (externalIp.isString() && externalPort.isUInt() &&
+            internalIp.isString() && internalPort.isUInt()) {
+            return true;
+        }
+    }
+
+    LOG(ERROR) << "Some ucp fields doesn't exists or doesn't set properly";
+    return false;
+}
+
 int CurvefsTools::InitServerData() {
     if (clusterMap_[kServers].isNull()) {
         LOG(ERROR) << "No servers in cluster map";
@@ -354,7 +381,18 @@ int CurvefsTools::InitServerData() {
             return -1;
         }
         serverData.physicalPoolName = server[kPhysicalPool].asString();
-        serverDatas.emplace_back(serverData);
+
+        if (SupportUcp(server[kUcpExternalIp], server[kUcpExternalPort],
+                       server[kUcpInternalIp], server[kUcpExternalPort])) {
+            serverData.ucpExternalEp = CurveServerData::ServerEndpoint{
+                    server[kUcpExternalIp].asString(),
+                    server[kUcpExternalPort].asUInt()};
+            serverData.ucpInternalEp = CurveServerData::ServerEndpoint{
+                    server[kUcpInternalIp].asString(),
+                    server[kUcpInternalPort].asUInt()};
+        }
+
+        serverDatas.emplace_back(std::move(serverData));
     }
     return 0;
 }
@@ -415,7 +453,24 @@ int CurvefsTools::InitLogicalPoolData() {
             LOG(WARNING) << "logicalpool not set, use default allow";
             lgPoolData.status = AllocateStatus::ALLOW;
         }
-        lgPoolDatas.emplace_back(lgPoolData);
+
+        if (lgPool[kUseUcp].isString()) {
+            auto value = lgPool[kUseUcp].asString();
+            std::for_each(value.begin(), value.end(), [](char c) {
+                return tolower(c);
+            });
+
+            if (value == "true") {
+                lgPoolData.useUcp = true;
+            } else if (value == "false") {
+                lgPoolData.useUcp = false;
+            } else {
+                LOG(ERROR) << "use_ucp should be either 'true' or 'false'";
+                return -1;
+            }
+        }
+
+        lgPoolDatas.emplace_back(std::move(lgPoolData));
     }
     return 0;
 }
@@ -788,6 +843,18 @@ int CurvefsTools::CreateServer() {
         request.set_zonename(it.zoneName);
         request.set_physicalpoolname(it.physicalPoolName);
         request.set_desc("");
+
+        if (it.ucpInternalEp) {
+            auto* ep = request.mutable_ucpinternalendpoint();
+            ep->set_ip(it.ucpInternalEp->ip);
+            ep->set_port(it.ucpInternalEp->port);
+        }
+
+        if (it.ucpExternalEp) {
+            auto* ep = request.mutable_ucpexternalendpoint();
+            ep->set_ip(it.ucpExternalEp->ip);
+            ep->set_port(it.ucpExternalEp->port);
+        }
 
         ServerRegistResponse response;
 

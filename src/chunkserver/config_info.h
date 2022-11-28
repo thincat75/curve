@@ -84,6 +84,11 @@ struct CopysetNodeOptions {
 
     std::string ip;
     uint32_t port;
+
+    bool enableUcp;
+    std::string ucpIp;
+    uint32_t ucpPort;
+
     // chunk文件的大小
     uint32_t maxChunkSize;
     // WAL segment file size

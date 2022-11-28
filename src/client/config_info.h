@@ -162,8 +162,12 @@ struct FailureRequestOption {
  */
 struct IOSenderOption {
     bool chunkserverEnableAppliedIndexRead;
+    bool enableUcpEndpoint = false;
     InFlightIOCntlInfo inflightOpt;
     FailureRequestOption failRequestOpt;
+
+    static constexpr const char* kEnableUcpEndpointOption =
+            "chunkserver.enableUcpEndpoint";
 };
 
 /**

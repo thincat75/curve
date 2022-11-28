@@ -177,6 +177,7 @@ bool LogicalPool::SerializeToString(std::string *value) const {
     data.set_userpolicy(this->GetUserPolicyJsonStr());
     data.set_availflag(avaliable_);
     data.set_scanenable(scanEnable_);
+    data.set_ucpconnection(ucpConn_);
     return data.SerializeToString(value);
 }
 
@@ -196,6 +197,7 @@ bool LogicalPool::ParseFromString(const std::string &value) {
     status_ = data.status();
     avaliable_ = data.availflag();
     scanEnable_ = data.has_scanenable() ? data.scanenable() : true;
+    ucpConn_ = data.has_ucpconnection() ? data.ucpconnection() : false;
     return ret;
 }
 
@@ -246,6 +248,19 @@ bool Server::SerializeToString(std::string *value) const {
     data.set_zoneid(zoneId_);
     data.set_physicalpoolid(physicalPoolId_);
     data.set_desc(desc_);
+
+    if (ucpInternalEp_) {
+        auto* ep = data.mutable_ucpinternalendpoint();
+        ep->set_ip(ucpInternalEp_->ip);
+        ep->set_port(ucpInternalEp_->port);
+
+        if (ucpExternalEp_) {
+            auto* external = data.mutable_ucpexternalendpoint();
+            external->set_ip(ucpExternalEp_->ip);
+            external->set_port(ucpExternalEp_->port);
+        }
+    }
+
     return data.SerializeToString(value);
 }
 
@@ -261,6 +276,17 @@ bool Server::ParseFromString(const std::string &value) {
     zoneId_ = data.zoneid();
     physicalPoolId_ = data.physicalpoolid();
     desc_ = data.desc();
+
+    if (data.has_ucpinternalendpoint()) {
+        ucpInternalEp_ = Endpoint{data.ucpinternalendpoint().ip(),
+                                  data.ucpinternalendpoint().port()};
+
+        if (data.has_ucpexternalendpoint()) {
+            ucpExternalEp_ = Endpoint{data.ucpexternalendpoint().ip(),
+                                      data.ucpexternalendpoint().port()};
+        }
+    }
+
     return ret;
 }
 
@@ -278,6 +304,19 @@ bool ChunkServer::SerializeToString(std::string *value) const {
     data.set_mountpoint(mountPoint_);
     data.set_diskcapacity(state_.GetDiskCapacity());
     data.set_diskused(state_.GetDiskUsed());
+
+    if (ucpInternalEp_) {
+        auto* internal = data.mutable_ucpinternalep();
+        internal->set_ip(ucpInternalEp_->ip);
+        internal->set_port(ucpInternalEp_->port);
+
+        if (ucpExternalEp_) {
+            auto* external = data.mutable_ucpexternalep();
+            external->set_ip(ucpExternalEp_->ip);
+            external->set_port(ucpExternalEp_->port);
+        }
+    }    
+
     return data.SerializeToString(value);
 }
 
@@ -296,6 +335,17 @@ bool ChunkServer::ParseFromString(const std::string &value) {
     state_.SetDiskState(data.diskstate());
     state_.SetDiskCapacity(data.diskcapacity());
     state_.SetDiskUsed(data.diskused());
+
+    if (data.has_ucpinternalep()) {
+        ucpInternalEp_ = Endpoint{data.ucpinternalep().ip(),
+                                  data.ucpinternalep().port()};
+
+        if (data.has_ucpexternalep()) {
+            ucpExternalEp_ = Endpoint{data.ucpexternalep().ip(),
+                                      data.ucpexternalep().port()};
+        }
+    }
+
     return ret;
 }
 
@@ -336,6 +386,7 @@ bool CopySetInfo::SerializeToString(std::string *value) const {
     data.set_availflag(available_);
     data.set_lastscansec(lastScanSec_);
     data.set_lastscanconsistent(lastScanConsistent_);
+    data.set_ucpconnection(ucpConn_);
     return data.SerializeToString(value);
 }
 
@@ -357,6 +408,8 @@ bool CopySetInfo::ParseFromString(const std::string &value) {
     lastScanSec_ = data.has_lastscansec() ? data.lastscansec() : 0;
     lastScanConsistent_ = data.has_lastscanconsistent() ?
                           data.lastscanconsistent() : true;
+    
+    ucpConn_ = data.has_ucpconnection() ? data.ucpconnection() : false;
     return ret;
 }
 

@@ -89,7 +89,8 @@ void CopysetServiceImpl::CreateCopysetNode2(RpcController *controller,
     Copyset copyset;
     std::vector<Peer> peers;
 
-    LOG(INFO) << "Received create copysets request";
+    LOG(INFO) << "Received create copysets request:" 
+              << request->ShortDebugString();
 
     for (int i = 0; i < request->copysets_size(); ++i) {
         copyset = request->copysets(i);

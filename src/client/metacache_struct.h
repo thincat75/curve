@@ -24,6 +24,7 @@
 #define SRC_CLIENT_METACACHE_STRUCT_H_
 
 #include <atomic>
+#include <ostream>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -53,32 +54,67 @@ template <typename T> struct CURVE_CACHELINE_ALIGNMENT CopysetPeerInfo {
     // 当前chunkserver节点的外部地址
     PeerAddr externalAddr;
 
+    bool hasUcpAddr = false;
+    PeerAddr ucpInternalAddr;
+
+    // If server side doesn't have an external ucp address, it's set to
+    // `ucpInternalAddr` when getting peer info from MDS.
+    PeerAddr ucpExternalAddr;
+
     CopysetPeerInfo() = default;
+
+    CopysetPeerInfo(const T& cid,
+                    const PeerAddr& internal,
+                    const PeerAddr& external)
+        : peerID(cid), internalAddr(internal), externalAddr(external) {}
+
+    CopysetPeerInfo(T cid,
+                    PeerAddr internal,
+                    PeerAddr external,
+                    PeerAddr ucpInternal,
+                    PeerAddr ucpExternal)
+        : peerID(cid),
+          internalAddr(std::move(internal)),
+          externalAddr(std::move(external)),
+          hasUcpAddr(true),
+          ucpInternalAddr(std::move(ucpInternal)),
+          ucpExternalAddr(std::move(ucpExternal)) {}
+
+    CopysetPeerInfo(const CopysetPeerInfo& other) = default;
     CopysetPeerInfo &operator=(const CopysetPeerInfo &other) = default;
 
-    CopysetPeerInfo(const T &cid, const PeerAddr &internal,
-                    const PeerAddr &external)
-        : peerID(cid), internalAddr(internal), externalAddr(external) {}
+    CopysetPeerInfo(CopysetPeerInfo&& other) noexcept = default;
+    CopysetPeerInfo& operator=(CopysetPeerInfo&& other) noexcept = default;
 
     bool operator==(const CopysetPeerInfo &other) const {
         return this->internalAddr == other.internalAddr &&
                this->externalAddr == other.externalAddr;
+               // FIXME: here
     }
 
     bool IsEmpty() const {
         return this->peerID == 0 && this->internalAddr.IsEmpty() &&
                this->externalAddr.IsEmpty();
+               // FIXME: here
+    }
+
+    friend std::ostream& operator<<(std::ostream& os,
+                                    const CopysetPeerInfo& info) {
+        os << "peer id : " << info.peerID
+           << ", internal address : " << info.internalAddr.ToString()
+           << ", external address : " << info.externalAddr.ToString();
+
+        if (info.hasUcpAddr) {
+            os << ", ucp internal address : " << info.ucpInternalAddr.ToString()
+               << ", ucp external address : "
+               << info.ucpExternalAddr.ToString();
+        } else {
+            os << ", no ucp addresses";
+        }
+
+        return os;
     }
 };
-
-template <typename T>
-inline std::ostream &operator<<(std::ostream &os, const CopysetPeerInfo<T> &c) {
-    os << "peer id : " << c.peerID
-       << ", internal address : " << c.internalAddr.ToString()
-       << ", external address : " << c.externalAddr.ToString();
-
-    return os;
-}
 
 // copyset的基本信息，包含peer信息、leader信息、appliedindex信息
 
@@ -182,7 +218,8 @@ template <typename T> struct CURVE_CACHELINE_ALIGNMENT CopysetInfo {
         bool exists = false;
         uint16_t tempindex = 0;
         for (auto iter : csinfos_) {
-            if (iter.internalAddr == addr || iter.externalAddr == addr) {
+            if (iter.internalAddr == addr || iter.externalAddr == addr || 
+                iter.ucpInternalAddr == addr || iter.ucpExternalAddr == addr) {
                 exists = true;
                 break;
             }
@@ -208,7 +245,7 @@ template <typename T> struct CURVE_CACHELINE_ALIGNMENT CopysetInfo {
      * @param[out]: peer id
      * @param[out]: ep
      */
-    int GetLeaderInfo(T *peerid, EndPoint *ep) {
+    int GetLeaderInfo(T *peerid, EndPoint *ep, bool ucpEndpoint = false) {
         // 第一次获取leader,如果当前leader信息没有确定，返回-1，由外部主动发起更新leader
         if (leaderindex_ < 0 || leaderindex_ >= csinfos_.size()) {
             LOG(INFO) << "GetLeaderInfo pool " << lpid_ << ", copyset " << cpid_
@@ -218,11 +255,23 @@ template <typename T> struct CURVE_CACHELINE_ALIGNMENT CopysetInfo {
         }
 
         *peerid = csinfos_[leaderindex_].peerID;
-        *ep = csinfos_[leaderindex_].externalAddr.addr_;
+
+        if (!ucpEndpoint) {
+            *ep = csinfos_[leaderindex_].externalAddr.addr_;
+        } else {
+            if (!csinfos_[leaderindex_].hasUcpAddr) {
+                LOG(ERROR) << "Needs ucp address, but copyset peer info "
+                              "doesn't support "
+                           << csinfos_[leaderindex_];
+                return -1;
+            }
+
+            *ep = csinfos_[leaderindex_].ucpExternalAddr.addr_;
+        }
 
         VLOG(3) << "GetLeaderInfo pool " << lpid_ << ", copyset " << cpid_
                 << " leader id " << *peerid << ", end point "
-                << butil::endpoint2str(*ep).c_str();
+                << butil::endpoint2str(*ep);
 
         return 0;
     }

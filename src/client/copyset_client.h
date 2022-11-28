@@ -23,24 +23,22 @@
 #ifndef SRC_CLIENT_COPYSET_CLIENT_H_
 #define SRC_CLIENT_COPYSET_CLIENT_H_
 
-#include <google/protobuf/stubs/callback.h>
 #include <butil/iobuf.h>
+#include <google/protobuf/stubs/callback.h>
 
-#include <string>
+#include <functional>
 #include <memory>
+#include <string>
 
-#include "include/curve_compiler_specific.h"
 #include "src/client/client_common.h"
 #include "src/client/client_metric.h"
 #include "src/client/config_info.h"
 #include "src/client/request_context.h"
 #include "src/client/request_sender_manager.h"
-#include "src/common/concurrent/concurrent.h"
 
 namespace curve {
 namespace client {
 
-using curve::common::Uncopyable;
 using ::google::protobuf::Closure;
 
 // TODO(tongguangxun) :后续除了read、write的接口也需要调整重试逻辑
@@ -63,7 +61,7 @@ class CopysetClient {
     CopysetClient(const CopysetClient&) = delete;
     CopysetClient& operator=(const CopysetClient&) = delete;
 
-    virtual ~CopysetClient() {
+    ~CopysetClient() {
         delete senderManager_;
         senderManager_ = nullptr;
     }
@@ -186,8 +184,9 @@ class CopysetClient {
      * @brief 如果csId对应的RequestSender不健康，就进行重置
      * @param csId chunkserver id
      */
-    void ResetSenderIfNotHealth(const ChunkServerID& csId) {
-        senderManager_->ResetSenderIfNotHealth(csId);
+    void ResetSenderIfNotHealth(const ChunkServerID& csId,
+                                const butil::EndPoint& ep) {
+        senderManager_->ResetSenderIfNotHealth(csId, ep);
     }
 
     /**
@@ -223,6 +222,7 @@ class CopysetClient {
     // 拉取新的leader信息
     bool FetchLeader(LogicPoolID lpid,
                      CopysetID cpid,
+                     bool ucpEndPoint,
                      ChunkServerID* leaderid,
                      butil::EndPoint* leaderaddr);
 

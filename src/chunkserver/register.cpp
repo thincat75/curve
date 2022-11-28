@@ -34,6 +34,7 @@
 #include "src/common/uri_parser.h"
 #include "src/chunkserver/chunkserver_helper.h"
 #include "proto/topology.pb.h"
+#include "src/chunkserver/chunkserver.h"
 
 namespace curve {
 namespace chunkserver {
@@ -73,6 +74,18 @@ int Register::RegisterToMDS(const ChunkServerMetadata *localMetadata,
             ops_.useChunkFilePoolAsWalPoolReserve);
     }
 
+    if (ops_.ucpOptions != nullptr && ops_.ucpOptions->enable) {
+        auto* internal = req.mutable_ucpinternalendpoint();
+        internal->set_ip(ops_.ucpOptions->internalIp);
+        internal->set_port(ops_.ucpOptions->internalPort);
+
+        if (ops_.ucpOptions->enableExternalServer) {
+            auto* external = req.mutable_ucpexternalendpoint();
+            external->set_ip(ops_.ucpOptions->externalIp);
+            external->set_port(ops_.ucpOptions->externalPort);
+        }
+    }
+
     if (localMetadata != nullptr) {
         req.set_chunkserverid(localMetadata->id());
         req.set_token(localMetadata->token());
@@ -83,7 +96,8 @@ int Register::RegisterToMDS(const ChunkServerMetadata *localMetadata,
               << ", port: " << ops_.chunkserverPort
               << ", enable external server: " << ops_.enableExternalServer
               << ", external ip: " << ops_.chunkserverExternalIp
-              << ", size =" << chunkPoolSize;
+              << ", size =" << chunkPoolSize
+              << ", register request:\n" << req.DebugString();
 
     int retries = ops_.registerRetries;
     while (retries >= 0) {

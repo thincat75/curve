@@ -119,6 +119,12 @@ struct CopySetInfo {
         this->statisticsInfo = statistics;
     }
 
+    CopySetInfo(const CopySetInfo&) = default;
+    CopySetInfo& operator=(const CopySetInfo&) = default;
+
+    CopySetInfo(CopySetInfo&&) noexcept = default;
+    CopySetInfo& operator=(CopySetInfo&&) noexcept = default;
+
     ~CopySetInfo();
 
     bool ContainPeer(ChunkServerIdType id) const;

@@ -79,10 +79,6 @@ class ClientClosure : public Closure {
         chunkserverEndPoint_ = endPoint;
     }
 
-    EndPoint GetChunkServerEndPoint() const {
-        return chunkserverEndPoint_;
-    }
-
     // 统一Run函数入口
     void Run() override;
 

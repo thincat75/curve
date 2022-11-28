@@ -62,7 +62,10 @@ inline void RequestSender::SetRpcStuff(
 }
 
 int RequestSender::Init(const IOSenderOption& ioSenderOpt) {
-    if (0 != channel_.Init(serverEndPoint_, NULL)) {
+    brpc::ChannelOptions opts;
+    opts.use_ucp = serverEndPoint_.is_ucp();
+
+    if (0 != channel_.Init(serverEndPoint_, &opts)) {
         LOG(ERROR) << "failed to init channel to server, id: " << chunkServerId_
                    << ", "<< serverEndPoint_.ip << ":" << serverEndPoint_.port;
         return -1;

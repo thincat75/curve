@@ -143,8 +143,16 @@ int CopysetNode::Init(const CopysetNodeOptions &options) {
 
     /* 初始化 peer id */
     butil::ip_t ip;
-    butil::str2ip(options.ip.c_str(), &ip);
-    butil::EndPoint addr(ip, options.port);
+    uint32_t port = 0;
+    if (!options.enableUcp) {
+        butil::str2ip(options.ip.c_str(), &ip);
+        port = options.port;
+    } else {
+        butil::str2ip(options.ucpIp.c_str(), &ip);
+        port = options.ucpPort;
+    }
+
+    butil::EndPoint addr(ip, port);
     /**
      * idx默认是零，在chunkserver不允许一个进程有同一个copyset的多副本，
      * 这一点注意和不让braft区别开来

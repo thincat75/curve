@@ -192,7 +192,7 @@ struct PeerAddr {
     EndPoint addr_;
 
     PeerAddr() = default;
-    explicit PeerAddr(butil::EndPoint addr) : addr_(addr) {}
+    explicit PeerAddr(butil::EndPoint addr) : addr_(std::move(addr)) {}
 
     bool IsEmpty() const {
         return (addr_.ip == butil::IP_ANY && addr_.port == 0) &&
@@ -209,7 +209,7 @@ struct PeerAddr {
     int Parse(const std::string &str) {
         int idx;
         char ip_str[64];
-        if (2 > sscanf(str.c_str(), "%[^:]%*[:]%d%*[:]%d", ip_str, &addr_.port,
+        if (2 > sscanf(str.c_str(), "%[^:]%*[:]%hu%*[:]%d", ip_str, &addr_.port,
                        &idx)) {
             Reset();
             return -1;

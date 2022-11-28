@@ -30,19 +30,21 @@ namespace curve {
 namespace client {
 
 RequestSenderManager::SenderPtr RequestSenderManager::GetOrCreateSender(
-    const ChunkServerID& leaderId,
-    const butil::EndPoint& leaderAddr,
-    const IOSenderOption& senderopt) {
+        const ChunkServerID& leaderId,
+        const butil::EndPoint& leaderAddr,
+        const IOSenderOption& senderopt) {
+    Key key{leaderId, leaderAddr.is_ucp()};
+
     {
         curve::common::ReadLockGuard guard(rwlock_);
-        auto iter = senderPool_.find(leaderId);
+        auto iter = senderPool_.find(key);
         if (senderPool_.end() != iter) {
             return iter->second;
         }
     }
 
     curve::common::WriteLockGuard guard(rwlock_);
-    auto iter = senderPool_.find(leaderId);
+    auto iter = senderPool_.find(key);
     if (senderPool_.end() != iter) {
         return iter->second;
     }
@@ -53,14 +55,16 @@ RequestSenderManager::SenderPtr RequestSenderManager::GetOrCreateSender(
         return nullptr;
     }
 
-    senderPool_.emplace(leaderId, sender);
+    senderPool_.emplace(key, sender);
 
     return sender;
 }
 
-void RequestSenderManager::ResetSenderIfNotHealth(const ChunkServerID& csId) {
+void RequestSenderManager::ResetSenderIfNotHealth(const ChunkServerID& csId,
+                                                  const butil::EndPoint& ep) {
+    Key key{csId, ep.is_ucp()};
     curve::common::WriteLockGuard guard(rwlock_);
-    auto iter = senderPool_.find(csId);
+    auto iter = senderPool_.find(key);
 
     if (iter == senderPool_.end()) {
         return;

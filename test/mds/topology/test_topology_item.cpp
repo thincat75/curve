@@ -112,6 +112,106 @@ TEST_F(TestTopologyItem, Test_SetCopySetMembersByJson_Fail) {
     ASSERT_EQ(false, cInfo.SetCopySetMembersByJson(jsonStr));
 }
 
+TEST(ChunkServerUcpTest, TestSerializeAndDeserialize) {
+    // no ucp endpoints
+    {
+        ChunkServer cs(1, "abcdef", "nvme", 1, "127.0.0.1", 8200,
+                       "/mnt/chunkserver");
+        EXPECT_FALSE(cs.GetUcpInternalEndPoint());
+        EXPECT_FALSE(cs.GetUcpExternalEndPoint());
+
+        std::string data;
+        EXPECT_TRUE(cs.SerializeToString(&data));
+        EXPECT_TRUE(cs.ParseFromString(data));
+
+        EXPECT_FALSE(cs.GetUcpInternalEndPoint());
+        EXPECT_FALSE(cs.GetUcpExternalEndPoint());
+    }
+
+    // only ucp internal endpoint
+    {
+        ChunkServer cs(1, "abcdef", "nvme", 1, "127.0.0.1", 8200,
+                       "/mnt/chunkserver");
+        cs.SetUcpInternalEp("127.0.0.1", 9200);
+        EXPECT_TRUE(cs.GetUcpInternalEndPoint());
+        EXPECT_FALSE(cs.GetUcpExternalEndPoint());
+
+        std::string data;
+        EXPECT_TRUE(cs.SerializeToString(&data));
+        EXPECT_TRUE(cs.ParseFromString(data));
+
+        EXPECT_TRUE(cs.GetUcpInternalEndPoint());
+        EXPECT_FALSE(cs.GetUcpExternalEndPoint());
+    }
+
+    // ucp internal & external endpoint
+    {
+        ChunkServer cs(1, "abcdef", "nvme", 1, "127.0.0.1", 8200,
+                       "/mnt/chunkserver");
+        cs.SetUcpInternalEp("127.0.0.1", 9200);
+        cs.SetUcpExternalEp("127.0.0.2", 9200);
+        EXPECT_TRUE(cs.GetUcpInternalEndPoint());
+        EXPECT_TRUE(cs.GetUcpExternalEndPoint());
+
+        std::string data;
+        EXPECT_TRUE(cs.SerializeToString(&data));
+        EXPECT_TRUE(cs.ParseFromString(data));
+
+        EXPECT_TRUE(cs.GetUcpInternalEndPoint());
+        EXPECT_TRUE(cs.GetUcpExternalEndPoint());
+    }
+}
+
+TEST(ServerUcpTest, TestSerializeAndDeserialize) {
+    // no ucp endpoints
+    {
+        Server svr(1, "localhost", "127.0.0.1", 8200, "127.0.0.1", 8200, 1, 1,
+                  "server1");
+        EXPECT_FALSE(svr.GetUcpInternalEp());
+        EXPECT_FALSE(svr.GetUcpExternalEp());
+
+        std::string data;
+        EXPECT_TRUE(svr.SerializeToString(&data));
+        EXPECT_TRUE(svr.ParseFromString(data));
+
+        EXPECT_FALSE(svr.GetUcpInternalEp());
+        EXPECT_FALSE(svr.GetUcpExternalEp());
+    }
+
+    // only ucp internal endpoint
+    {
+        Server svr(1, "localhost", "127.0.0.1", 8200, "127.0.0.1", 8200, 1, 1,
+                  "server1");
+        svr.SetUcpInternalEp("127.0.0.1", 9200);
+        EXPECT_TRUE(svr.GetUcpInternalEp());
+        EXPECT_FALSE(svr.GetUcpExternalEp());
+
+        std::string data;
+        EXPECT_TRUE(svr.SerializeToString(&data));
+        EXPECT_TRUE(svr.ParseFromString(data));
+
+        EXPECT_TRUE(svr.GetUcpInternalEp());
+        EXPECT_FALSE(svr.GetUcpExternalEp());
+    }
+
+    // ucp internal & external endpoint
+    {
+        Server svr(1, "localhost", "127.0.0.1", 8200, "127.0.0.1", 8200, 1, 1,
+                  "server1");
+        svr.SetUcpInternalEp("127.0.0.1", 9200);
+        svr.SetUcpExternalEp("127.0.0.2", 9200);
+        EXPECT_TRUE(svr.GetUcpInternalEp());
+        EXPECT_TRUE(svr.GetUcpExternalEp());
+
+        std::string data;
+        EXPECT_TRUE(svr.SerializeToString(&data));
+        EXPECT_TRUE(svr.ParseFromString(data));
+
+        EXPECT_TRUE(svr.GetUcpInternalEp());
+        EXPECT_TRUE(svr.GetUcpExternalEp());
+    }
+}
+
 }  // namespace topology
 }  // namespace mds
 }  // namespace curve

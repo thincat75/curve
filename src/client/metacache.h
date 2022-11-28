@@ -105,7 +105,8 @@ class MetaCache {
      */
     virtual int GetLeader(LogicPoolID logicPoolId, CopysetID copysetId,
                           ChunkServerID *serverId, butil::EndPoint *serverAddr,
-                          bool refresh = false, FileMetric *fm = nullptr);
+                          bool refresh = false, FileMetric *fm = nullptr,
+                          bool ucpAddr = false);
     /**
      * 更新某个copyset的leader信息
      * @param logicPoolId 逻辑池id

@@ -233,7 +233,7 @@ TEST_F(CopysetClientTest, normal_test) {
 
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).
                                             Times(AtLeast(1))
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
@@ -264,7 +264,7 @@ TEST_F(CopysetClientTest, normal_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).
                                             Times(AtLeast(1))
             .WillOnce(Return(-1))
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
@@ -296,7 +296,7 @@ TEST_F(CopysetClientTest, normal_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).
                                             Times(AtLeast(1))
             .WillOnce(Return(-1))
             .WillOnce(Return(-1))
@@ -332,7 +332,7 @@ TEST_F(CopysetClientTest, normal_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).
                                             Times(AtLeast(1))
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
@@ -363,7 +363,7 @@ TEST_F(CopysetClientTest, normal_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).
                                             Times(AtLeast(1))
             .WillOnce(Return(-1))
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
@@ -395,7 +395,7 @@ TEST_F(CopysetClientTest, normal_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).
                                             Times(AtLeast(1))
             .WillOnce(Return(-1))
             .WillOnce(Return(-1))
@@ -486,7 +486,7 @@ TEST_F(CopysetClientTest, write_error_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_INVALID_REQUEST);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(AtLeast(1)).WillOnce(DoAll(SetArgPointee<2>(leaderId),
                                               SetArgPointee<3>(leaderAddr),
                                               Return(0)));
@@ -519,7 +519,7 @@ TEST_F(CopysetClientTest, write_error_test) {
 
         reqCtx->done_ = reqDone;
         gWriteCntlFailedCode = -1;
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(6)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(6)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                                   SetArgPointee<3>(leaderAddr),
                                   Return(0)));
@@ -557,7 +557,7 @@ TEST_F(CopysetClientTest, write_error_test) {
 
         reqCtx->done_ = reqDone;
         gWriteCntlFailedCode = brpc::ERPCTIMEDOUT;
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(AtLeast(3))
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                                   SetArgPointee<3>(leaderAddr),
@@ -601,7 +601,7 @@ TEST_F(CopysetClientTest, write_error_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_OVERLOAD);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(3).WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                                            SetArgPointee<3>(leaderAddr),
                                            Return(0)));
@@ -638,7 +638,7 @@ TEST_F(CopysetClientTest, write_error_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_FAILURE_UNKNOWN);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(3).WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                                            SetArgPointee<3>(leaderAddr),
                                            Return(0)));
@@ -673,7 +673,7 @@ TEST_F(CopysetClientTest, write_error_test) {
         response1.set_redirect(leaderStr);
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -714,7 +714,7 @@ TEST_F(CopysetClientTest, write_error_test) {
 //        response1.set_redirect(leaderStr2);
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -752,7 +752,7 @@ TEST_F(CopysetClientTest, write_error_test) {
 //        response1.set_redirect(leaderStr2);
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)))
@@ -792,7 +792,7 @@ TEST_F(CopysetClientTest, write_error_test) {
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_REDIRECTED);
         response.set_redirect(leaderStr);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(6)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(6)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -836,7 +836,7 @@ TEST_F(CopysetClientTest, write_error_test) {
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_COPYSET_NOTEXIST);
         response.set_redirect(leaderStr);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(6)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(6)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -871,7 +871,7 @@ TEST_F(CopysetClientTest, write_error_test) {
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
         response2.set_redirect(leaderStr);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -904,7 +904,7 @@ TEST_F(CopysetClientTest, write_error_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_EPOCH_TOO_OLD);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(AtLeast(1)).WillOnce(DoAll(SetArgPointee<2>(leaderId),
                                               SetArgPointee<3>(leaderAddr),
                                               Return(0)));
@@ -996,7 +996,7 @@ TEST_F(CopysetClientTest, write_failed_test) {
 
         reqCtx->done_ = reqDone;
         gWriteCntlFailedCode = brpc::ERPCTIMEDOUT;
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(AtLeast(50))
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                                   SetArgPointee<3>(leaderAddr),
@@ -1039,7 +1039,7 @@ TEST_F(CopysetClientTest, write_failed_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_OVERLOAD);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(50).WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                                            SetArgPointee<3>(leaderAddr),
                                            Return(0)));
@@ -1134,7 +1134,7 @@ TEST_F(CopysetClientTest, read_failed_test) {
 
         reqCtx->done_ = reqDone;
         gReadCntlFailedCode = brpc::ERPCTIMEDOUT;
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(AtLeast(50))
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                                   SetArgPointee<3>(leaderAddr),
@@ -1180,7 +1180,7 @@ TEST_F(CopysetClientTest, read_failed_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_OVERLOAD);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(50).WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                                            SetArgPointee<3>(leaderAddr),
                                            Return(0)));
@@ -1270,7 +1270,7 @@ TEST_F(CopysetClientTest, read_error_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_INVALID_REQUEST);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(AtLeast(1)).WillOnce(DoAll(SetArgPointee<2>(leaderId),
                                               SetArgPointee<3>(leaderAddr),
                                               Return(0)));
@@ -1301,7 +1301,7 @@ TEST_F(CopysetClientTest, read_error_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_CHUNK_NOTEXIST);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(AtLeast(1)).WillOnce(DoAll(SetArgPointee<2>(leaderId),
                                               SetArgPointee<3>(leaderAddr),
                                               Return(0)));
@@ -1333,7 +1333,7 @@ TEST_F(CopysetClientTest, read_error_test) {
 
         reqCtx->done_ = reqDone;
         gReadCntlFailedCode = -1;
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(AtLeast(3))
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                                   SetArgPointee<3>(leaderAddr),
@@ -1373,7 +1373,7 @@ TEST_F(CopysetClientTest, read_error_test) {
 
         reqCtx->done_ = reqDone;
         gReadCntlFailedCode = brpc::ERPCTIMEDOUT;
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(AtLeast(3))
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                                   SetArgPointee<3>(leaderAddr),
@@ -1418,7 +1418,7 @@ TEST_F(CopysetClientTest, read_error_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_OVERLOAD);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(3).WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                                            SetArgPointee<3>(leaderAddr),
                                            Return(0)));
@@ -1454,7 +1454,7 @@ TEST_F(CopysetClientTest, read_error_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_FAILURE_UNKNOWN);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(3).WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                                            SetArgPointee<3>(leaderAddr),
                                            Return(0)));
@@ -1488,7 +1488,7 @@ TEST_F(CopysetClientTest, read_error_test) {
         response1.set_redirect(leaderStr);
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -1526,7 +1526,7 @@ TEST_F(CopysetClientTest, read_error_test) {
 //        response1.set_redirect(leaderStr2);
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)))
@@ -1568,7 +1568,7 @@ TEST_F(CopysetClientTest, read_error_test) {
 //        response1.set_redirect(leaderStr2);
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)))
@@ -1608,7 +1608,7 @@ TEST_F(CopysetClientTest, read_error_test) {
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_REDIRECTED);
         response.set_redirect(leaderStr);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(6)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(6)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -1642,7 +1642,7 @@ TEST_F(CopysetClientTest, read_error_test) {
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_COPYSET_NOTEXIST);
         response.set_redirect(leaderStr);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(6)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(6)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -1677,7 +1677,7 @@ TEST_F(CopysetClientTest, read_error_test) {
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
         response2.set_redirect(leaderStr);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)))
@@ -1762,7 +1762,7 @@ TEST_F(CopysetClientTest, read_snapshot_error_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_INVALID_REQUEST);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(AtLeast(1)).WillOnce(DoAll(SetArgPointee<2>(leaderId),
                                               SetArgPointee<3>(leaderAddr),
                                               Return(0)));
@@ -1794,7 +1794,7 @@ TEST_F(CopysetClientTest, read_snapshot_error_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_CHUNK_NOTEXIST);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(AtLeast(1)).WillOnce(DoAll(SetArgPointee<2>(leaderId),
                                               SetArgPointee<3>(leaderAddr),
                                               Return(0)));
@@ -1825,7 +1825,7 @@ TEST_F(CopysetClientTest, read_snapshot_error_test) {
 
         reqCtx->done_ = reqDone;
         gReadCntlFailedCode = -1;
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(6)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(6)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                                   SetArgPointee<3>(leaderAddr),
                                   Return(0)));
@@ -1856,7 +1856,7 @@ TEST_F(CopysetClientTest, read_snapshot_error_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_FAILURE_UNKNOWN);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(3).WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                                            SetArgPointee<3>(leaderAddr),
                                            Return(0)));
@@ -1891,7 +1891,7 @@ TEST_F(CopysetClientTest, read_snapshot_error_test) {
         response1.set_redirect(leaderStr);
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -1929,7 +1929,7 @@ TEST_F(CopysetClientTest, read_snapshot_error_test) {
         response1.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_REDIRECTED);
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -1965,7 +1965,7 @@ TEST_F(CopysetClientTest, read_snapshot_error_test) {
         response1.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_REDIRECTED);
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)))
@@ -2004,7 +2004,7 @@ TEST_F(CopysetClientTest, read_snapshot_error_test) {
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_REDIRECTED);
         response.set_redirect(leaderStr);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(6)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(6)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -2039,7 +2039,7 @@ TEST_F(CopysetClientTest, read_snapshot_error_test) {
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_COPYSET_NOTEXIST);
         response.set_redirect(leaderStr);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(6)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(6)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -2075,7 +2075,7 @@ TEST_F(CopysetClientTest, read_snapshot_error_test) {
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
         response2.set_redirect(leaderStr);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -2108,7 +2108,7 @@ TEST_F(CopysetClientTest, read_snapshot_error_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).
                                             Times(AtLeast(1))
             .WillOnce(Return(-1))
             .WillOnce(Return(-1))
@@ -2177,7 +2177,7 @@ TEST_F(CopysetClientTest, delete_snapshot_error_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_INVALID_REQUEST);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(AtLeast(1)).WillOnce(DoAll(SetArgPointee<2>(leaderId),
                                               SetArgPointee<3>(leaderAddr),
                                               Return(0)));
@@ -2207,7 +2207,7 @@ TEST_F(CopysetClientTest, delete_snapshot_error_test) {
 
         reqCtx->done_ = reqDone;
         gReadCntlFailedCode = -1;
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(6)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(6)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                                   SetArgPointee<3>(leaderAddr),
                                   Return(0)));
@@ -2237,7 +2237,7 @@ TEST_F(CopysetClientTest, delete_snapshot_error_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_FAILURE_UNKNOWN);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(3).WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                                            SetArgPointee<3>(leaderAddr),
                                            Return(0)));
@@ -2271,7 +2271,7 @@ TEST_F(CopysetClientTest, delete_snapshot_error_test) {
         response1.set_redirect(leaderStr);
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)))
@@ -2311,7 +2311,7 @@ TEST_F(CopysetClientTest, delete_snapshot_error_test) {
         response1.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_REDIRECTED);
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -2346,7 +2346,7 @@ TEST_F(CopysetClientTest, delete_snapshot_error_test) {
         response1.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_REDIRECTED);
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)))
@@ -2386,7 +2386,7 @@ TEST_F(CopysetClientTest, delete_snapshot_error_test) {
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_REDIRECTED);
         response.set_redirect(leaderStr);;
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(6)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(6)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -2420,7 +2420,7 @@ TEST_F(CopysetClientTest, delete_snapshot_error_test) {
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_COPYSET_NOTEXIST);
         response.set_redirect(leaderStr);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(6)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(6)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -2455,7 +2455,7 @@ TEST_F(CopysetClientTest, delete_snapshot_error_test) {
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
         response2.set_redirect(leaderStr);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -2487,7 +2487,7 @@ TEST_F(CopysetClientTest, delete_snapshot_error_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).
                                             Times(AtLeast(1))
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
@@ -2561,7 +2561,7 @@ TEST_F(CopysetClientTest, create_s3_clone_error_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_INVALID_REQUEST);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(AtLeast(1)).WillOnce(DoAll(SetArgPointee<2>(leaderId),
                                               SetArgPointee<3>(leaderAddr),
                                               Return(0)));
@@ -2590,7 +2590,7 @@ TEST_F(CopysetClientTest, create_s3_clone_error_test) {
 
         reqCtx->done_ = reqDone;
         gReadCntlFailedCode = -1;
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(6)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(6)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                                   SetArgPointee<3>(leaderAddr),
                                   Return(0)));
@@ -2619,7 +2619,7 @@ TEST_F(CopysetClientTest, create_s3_clone_error_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_FAILURE_UNKNOWN);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(3).WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                                            SetArgPointee<3>(leaderAddr),
                                            Return(0)));
@@ -2650,7 +2650,7 @@ TEST_F(CopysetClientTest, create_s3_clone_error_test) {
 
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(1)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(1)
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)))
@@ -2685,7 +2685,7 @@ TEST_F(CopysetClientTest, create_s3_clone_error_test) {
         response1.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_REDIRECTED);
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -2719,7 +2719,7 @@ TEST_F(CopysetClientTest, create_s3_clone_error_test) {
         response1.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_REDIRECTED);
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)))
@@ -2756,7 +2756,7 @@ TEST_F(CopysetClientTest, create_s3_clone_error_test) {
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_REDIRECTED);
         response.set_redirect(leaderStr);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(6)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(6)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -2789,7 +2789,7 @@ TEST_F(CopysetClientTest, create_s3_clone_error_test) {
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_COPYSET_NOTEXIST);
         response.set_redirect(leaderStr);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(6)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(6)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -2823,7 +2823,7 @@ TEST_F(CopysetClientTest, create_s3_clone_error_test) {
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
         response2.set_redirect(leaderStr);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)))
@@ -2860,7 +2860,7 @@ TEST_F(CopysetClientTest, create_s3_clone_error_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).
                                             Times(AtLeast(1))
             .WillOnce(Return(-1))
             .WillOnce(Return(-1))
@@ -2930,7 +2930,7 @@ TEST_F(CopysetClientTest, recover_chunk_error_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_INVALID_REQUEST);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(AtLeast(1)).WillOnce(DoAll(SetArgPointee<2>(leaderId),
                                               SetArgPointee<3>(leaderAddr),
                                               Return(0)));
@@ -2958,7 +2958,7 @@ TEST_F(CopysetClientTest, recover_chunk_error_test) {
 
         reqCtx->done_ = reqDone;
         gReadCntlFailedCode = -1;
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(6)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(6)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                                   SetArgPointee<3>(leaderAddr),
                                   Return(0)));
@@ -2986,7 +2986,7 @@ TEST_F(CopysetClientTest, recover_chunk_error_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_FAILURE_UNKNOWN);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(3).WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                                            SetArgPointee<3>(leaderAddr),
                                            Return(0)));
@@ -3018,7 +3018,7 @@ TEST_F(CopysetClientTest, recover_chunk_error_test) {
         response1.set_redirect(leaderStr);
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(1)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(1)
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -3049,7 +3049,7 @@ TEST_F(CopysetClientTest, recover_chunk_error_test) {
         response1.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_REDIRECTED);
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)))
@@ -3088,7 +3088,7 @@ TEST_F(CopysetClientTest, recover_chunk_error_test) {
         response1.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_REDIRECTED);
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)))
@@ -3124,7 +3124,7 @@ TEST_F(CopysetClientTest, recover_chunk_error_test) {
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_REDIRECTED);
         response.set_redirect(leaderStr);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(6)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(6)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -3156,7 +3156,7 @@ TEST_F(CopysetClientTest, recover_chunk_error_test) {
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_COPYSET_NOTEXIST);
         response.set_redirect(leaderStr);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(6)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(6)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -3189,7 +3189,7 @@ TEST_F(CopysetClientTest, recover_chunk_error_test) {
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
         response2.set_redirect(leaderStr);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -3218,7 +3218,7 @@ TEST_F(CopysetClientTest, recover_chunk_error_test) {
         reqCtx->done_ = reqDone;
         ChunkResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).
                                             Times(AtLeast(1))
             .WillOnce(Return(-1))
             .WillOnce(Return(-1))
@@ -3284,7 +3284,7 @@ TEST_F(CopysetClientTest, get_chunk_info_test) {
         reqCtx->done_ = reqDone;
         GetChunkInfoResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_INVALID_REQUEST);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(AtLeast(1)).WillOnce(DoAll(SetArgPointee<2>(leaderId),
                                               SetArgPointee<3>(leaderAddr),
                                               Return(0)));
@@ -3310,7 +3310,7 @@ TEST_F(CopysetClientTest, get_chunk_info_test) {
         reqDone->SetIOTracker(&iot);
         reqCtx->done_ = reqDone;
         gReadCntlFailedCode = -1;
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(6)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(6)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                                   SetArgPointee<3>(leaderAddr),
                                   Return(0)));
@@ -3336,7 +3336,7 @@ TEST_F(CopysetClientTest, get_chunk_info_test) {
         reqCtx->done_ = reqDone;
         GetChunkInfoResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_FAILURE_UNKNOWN);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(3).WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                                            SetArgPointee<3>(leaderAddr),
                                            Return(0)));
@@ -3366,7 +3366,7 @@ TEST_F(CopysetClientTest, get_chunk_info_test) {
         response1.set_redirect(leaderStr);
         GetChunkInfoResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -3399,7 +3399,7 @@ TEST_F(CopysetClientTest, get_chunk_info_test) {
         response1.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_REDIRECTED);
         GetChunkInfoResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -3430,7 +3430,7 @@ TEST_F(CopysetClientTest, get_chunk_info_test) {
         response1.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_REDIRECTED);
         GetChunkInfoResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)))
@@ -3464,7 +3464,7 @@ TEST_F(CopysetClientTest, get_chunk_info_test) {
         GetChunkInfoResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_REDIRECTED);
         response.set_redirect(leaderStr);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(6)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(6)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -3494,7 +3494,7 @@ TEST_F(CopysetClientTest, get_chunk_info_test) {
         GetChunkInfoResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_COPYSET_NOTEXIST);
         response.set_redirect(leaderStr);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(6)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(6)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)));
@@ -3525,7 +3525,7 @@ TEST_F(CopysetClientTest, get_chunk_info_test) {
         GetChunkInfoResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
         response2.set_redirect(leaderStr);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).Times(3)
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).Times(3)
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
                             Return(0)))
@@ -3559,7 +3559,7 @@ TEST_F(CopysetClientTest, get_chunk_info_test) {
         reqCtx->done_ = reqDone;
         GetChunkInfoResponse response;
         response.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _)).
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _)).
                     Times(AtLeast(1))
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr),
@@ -3757,7 +3757,7 @@ TEST_F(CopysetClientTest, retry_rpc_sleep_test) {
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
 
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(3)
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr), Return(0)))
@@ -3810,7 +3810,7 @@ TEST_F(CopysetClientTest, retry_rpc_sleep_test) {
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
 
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(3)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr), Return(0)));
@@ -3859,7 +3859,7 @@ TEST_F(CopysetClientTest, retry_rpc_sleep_test) {
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
 
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(3)
             .WillOnce(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr), Return(0)))
@@ -3908,7 +3908,7 @@ TEST_F(CopysetClientTest, retry_rpc_sleep_test) {
         ChunkResponse response2;
         response2.set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
 
-        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _))
+        EXPECT_CALL(mockMetaCache, GetLeader(_, _, _, _, _, _, _))
             .Times(3)
             .WillRepeatedly(DoAll(SetArgPointee<2>(leaderId),
                             SetArgPointee<3>(leaderAddr), Return(0)));

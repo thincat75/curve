@@ -27,6 +27,7 @@
 #include <string>
 #include <vector>
 
+#include "src/client/config_info.h"
 #include "src/common/net_common.h"
 #include "src/common/fast_align.h"
 #include "src/common/string_util.h"
@@ -128,6 +129,12 @@ int ClientConfig::Init(const std::string& configpath) {
     ret = conf_.GetUInt64Value("chunkserver.maxRetryTimesBeforeConsiderSuspend",
         &fileServiceOption_.ioOpt.ioSenderOpt.failRequestOpt.chunkserverMaxRetryTimesBeforeConsiderSuspend);   // NOLINT
     LOG_IF(ERROR, ret == false) << "config no chunkserver.maxRetryTimesBeforeConsiderSuspend info";             // NOLINT
+
+    ret = conf_.GetBoolValue(
+            IOSenderOption::kEnableUcpEndpointOption,
+            &fileServiceOption_.ioOpt.ioSenderOpt.enableUcpEndpoint);
+    LOG_IF(ERROR, ret == false) << "config no " << IOSenderOption::kEnableUcpEndpointOption;
+    RETURN_IF_FALSE(ret);
 
     ret = conf_.GetUInt64Value("global.fileMaxInFlightRPCNum",
         &fileServiceOption_.ioOpt.ioSenderOpt.inflightOpt.fileMaxInFlightRPCNum);   // NOLINT

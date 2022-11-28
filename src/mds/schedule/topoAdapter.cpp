@@ -391,7 +391,18 @@ bool TopoAdapterImpl::CreateCopySetAtChunkServer(CopySetKey id,
                                                  ChunkServerIdType csID) {
     ::curve::mds::topology::CopySetInfo info(id.first, id.second);
     std::vector<::curve::mds::topology::CopySetInfo> infos;
-    infos.push_back(info);
+
+    curve::mds::topology::CopySetInfo copyset;
+    auto rc = topo_->GetCopySet(id, &copyset);
+    if (!rc) {
+        LOG(WARNING) << "Get copyset failed, copyset key: [" << id.first << ", "
+                     << id.second << "]";
+        return false;
+    }
+
+    info.SetUcpConnection(copyset.GetUcpConnection());
+
+    infos.push_back(std::move(info));
     return topoServiceManager_->CreateCopysetNodeOnChunkServer(csID, infos);
 }
 

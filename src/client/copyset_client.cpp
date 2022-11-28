@@ -29,7 +29,6 @@
 
 #include "src/client/request_sender.h"
 #include "src/client/metacache.h"
-#include "src/client/client_config.h"
 #include "src/client/request_scheduler.h"
 #include "src/client/request_closure.h"
 
@@ -62,17 +61,21 @@ int CopysetClient::Init(MetaCache *metaCache,
               << iosenderopt_.failRequestOpt.chunkserverMaxRPCTimeoutMS;
     return 0;
 }
-bool CopysetClient::FetchLeader(LogicPoolID lpid, CopysetID cpid,
-    ChunkServerID* leaderid, butil::EndPoint* leaderaddr) {
+
+bool CopysetClient::FetchLeader(LogicPoolID lpid,
+                                CopysetID cpid,
+                                bool ucpEndpoint,
+                                ChunkServerID* leaderid,
+                                butil::EndPoint* leaderaddr) {
     // 1. 先去当前metacache中拉取leader信息
-    if (0 == metaCache_->GetLeader(lpid, cpid, leaderid,
-        leaderaddr, false, fileMetric_)) {
+    if (0 == metaCache_->GetLeader(lpid, cpid, leaderid, leaderaddr, false,
+                                   fileMetric_, ucpEndpoint)) {
         return true;
     }
 
     // 2. 如果metacache中leader信息拉取失败，就发送RPC请求获取新leader信息
-    if (-1 == metaCache_->GetLeader(lpid, cpid, leaderid,
-        leaderaddr, true, fileMetric_)) {
+    if (-1 == metaCache_->GetLeader(lpid, cpid, leaderid, leaderaddr, true,
+                                    fileMetric_, ucpEndpoint)) {
         LOG(WARNING) << "Get leader address form cache failed, but "
             << "also refresh leader address failed from mds."
             << "(<" << lpid << ", " << cpid << ">)";
@@ -139,12 +142,7 @@ int CopysetClient::WriteChunk(const ChunkIDInfo& idinfo,
                               off_t offset, size_t length,
                               const RequestSourceInfo& sourceInfo,
                               google::protobuf::Closure* done) {
-    std::shared_ptr<RequestSender> senderPtr = nullptr;
-    ChunkServerID leaderId;
-    butil::EndPoint leaderAddr;
-
     RequestClosure* reqclosure = static_cast<RequestClosure*>(done);
-
     brpc::ClosureGuard doneGuard(done);
 
     // session过期情况下重试有两种场景：
@@ -246,7 +244,8 @@ int CopysetClient::RecoverChunk(const ChunkIDInfo& idinfo,
 
 int CopysetClient::DoRPCTask(const ChunkIDInfo& idinfo,
     std::function<void(Closure* done,
-    std::shared_ptr<RequestSender> senderptr)> task, Closure *done) {
+                           std::shared_ptr<RequestSender> senderptr)> task,
+        Closure* done) {
     RequestClosure* reqclosure = static_cast<RequestClosure*>(done);
 
     ChunkServerID leaderId;
@@ -254,17 +253,19 @@ int CopysetClient::DoRPCTask(const ChunkIDInfo& idinfo,
     brpc::ClosureGuard doneGuard(done);
 
     while (reqclosure->GetRetriedTimes() <
-        iosenderopt_.failRequestOpt.chunkserverOPMaxRetry) {
+           iosenderopt_.failRequestOpt.chunkserverOPMaxRetry) {
         reqclosure->IncremRetriedTimes();
-        if (false == FetchLeader(idinfo.lpid_, idinfo.cpid_,
-            &leaderId, &leaderAddr)) {
+        const bool useUcpEndpoint = iosenderopt_.enableUcpEndpoint;
+
+        if (!FetchLeader(idinfo.lpid_, idinfo.cpid_, useUcpEndpoint, &leaderId,
+                         &leaderAddr)) {
             bthread_usleep(
-            iosenderopt_.failRequestOpt.chunkserverOPRetryIntervalUS);
+                    iosenderopt_.failRequestOpt.chunkserverOPRetryIntervalUS);
             continue;
         }
 
-        auto senderPtr = senderManager_->GetOrCreateSender(leaderId,
-                                        leaderAddr, iosenderopt_);
+        auto senderPtr = senderManager_->GetOrCreateSender(leaderId, leaderAddr,
+                                                           iosenderopt_);
         if (nullptr != senderPtr) {
             task(doneGuard.release(), senderPtr);
             break;

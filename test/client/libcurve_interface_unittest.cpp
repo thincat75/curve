@@ -59,13 +59,19 @@ std::mutex interfacemtx;
 std::condition_variable interfacecv;
 
 void writecallbacktest(CurveAioContext *context) {
-    writeflag = true;
+    {
+        std::lock_guard<std::mutex> lock(writeinterfacemtx);
+        writeflag = true;
+    }
     writeinterfacecv.notify_one();
     LOG(INFO) << "aio call back here, errorcode = " << context->ret;
 }
 
 void readcallbacktest(CurveAioContext *context) {
-    readflag = true;
+    {
+        std::lock_guard<std::mutex> lock(interfacemtx);
+        readflag = true;
+    }
     interfacecv.notify_one();
     LOG(INFO) << "aio call back here, errorcode = " << context->ret;
 }
@@ -113,7 +119,7 @@ TEST(TestLibcurveInterface, InterfaceTest) {
     ASSERT_EQ(GetClusterId(clusterId, 1), -LIBCURVE_ERROR::FAILED);
 
     // libcurve file operation
-    int temp = Create(filename.c_str(), &userinfo, FLAGS_test_disk_size);
+    ASSERT_EQ(0, Create(filename.c_str(), &userinfo, FLAGS_test_disk_size));
 
     int fd = Open(filename.c_str(), &userinfo);
 
@@ -135,28 +141,36 @@ TEST(TestLibcurveInterface, InterfaceTest) {
     writeaioctx.length = 8 * 1024;
     writeaioctx.cb = writecallbacktest;
 
-    AioWrite(fd, &writeaioctx);
+    ASSERT_EQ(0, AioWrite(fd, &writeaioctx));
     {
         std::unique_lock<std::mutex> lk(writeinterfacemtx);
         writeinterfacecv.wait(lk, []() -> bool { return writeflag; });
     }
+    ASSERT_EQ(writeaioctx.length, writeaioctx.ret);
+
     writeflag = false;
-    AioWrite(fd, &writeaioctx);
+    ASSERT_EQ(0, AioWrite(fd, &writeaioctx));
     {
         std::unique_lock<std::mutex> lk(writeinterfacemtx);
         writeinterfacecv.wait(lk, []() -> bool { return writeflag; });
     }
+    ASSERT_EQ(writeaioctx.length, writeaioctx.ret);
+
     char *readbuffer = new char[8 * 1024];
+    memset(buffer, 0, 8 * 1024);
+
     CurveAioContext readaioctx;
     readaioctx.buf = readbuffer;
     readaioctx.offset = 0;
     readaioctx.length = 8 * 1024;
     readaioctx.cb = readcallbacktest;
-    AioRead(fd, &readaioctx);
+    ASSERT_EQ(0, AioRead(fd, &readaioctx));
     {
         std::unique_lock<std::mutex> lk(interfacemtx);
         interfacecv.wait(lk, []() -> bool { return readflag; });
     }
+
+    ASSERT_EQ(readaioctx.length, readaioctx.ret);
 
     for (int i = 0; i < 1024; i++) {
         ASSERT_EQ(readbuffer[i], 'a');
@@ -895,7 +909,6 @@ TEST(TestLibcurveInterface, ResumeTimeoutBackoff) {
 
     ASSERT_NE(fd, -1);
 
-    CliServiceFake *cliservice = mds.GetCliService();
     std::vector<FakeChunkService *> chunkservice = mds.GetFakeChunkService();
 
     char *buffer = new char[8 * 1024];

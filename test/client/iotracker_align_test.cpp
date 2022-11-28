@@ -153,7 +153,7 @@ TEST_F(IOTrackerAlignmentTest, TestUnalignedWrite1) {
             return MetaCacheErrorType::OK;
         }));
 
-    EXPECT_CALL(*mockMetaCache_, GetLeader(_, _, _, _, _, _))
+    EXPECT_CALL(*mockMetaCache_, GetLeader(_, _, _, _, _, _, _))
         .WillRepeatedly(
             DoAll(SetArgPointee<2>(csId_), SetArgPointee<3>(csEp_), Return(0)));
 
@@ -199,7 +199,7 @@ TEST_F(IOTrackerAlignmentTest, TestUnalignedWrite2) {
             return MetaCacheErrorType::OK;
         }));
 
-    EXPECT_CALL(*mockMetaCache_, GetLeader(_, _, _, _, _, _))
+    EXPECT_CALL(*mockMetaCache_, GetLeader(_, _, _, _, _, _, _))
         .WillRepeatedly(
             DoAll(SetArgPointee<2>(csId_), SetArgPointee<3>(csEp_), Return(0)));
 
@@ -245,7 +245,7 @@ TEST_F(IOTrackerAlignmentTest, TestUnalignedWrite3) {
             return MetaCacheErrorType::OK;
         }));
 
-    EXPECT_CALL(*mockMetaCache_, GetLeader(_, _, _, _, _, _))
+    EXPECT_CALL(*mockMetaCache_, GetLeader(_, _, _, _, _, _, _))
         .WillRepeatedly(
             DoAll(SetArgPointee<2>(csId_), SetArgPointee<3>(csEp_), Return(0)));
 
@@ -291,7 +291,7 @@ TEST_F(IOTrackerAlignmentTest, TestUnalignedWrite4) {
             return MetaCacheErrorType::OK;
         }));
 
-    EXPECT_CALL(*mockMetaCache_, GetLeader(_, _, _, _, _, _))
+    EXPECT_CALL(*mockMetaCache_, GetLeader(_, _, _, _, _, _, _))
         .WillRepeatedly(
             DoAll(SetArgPointee<2>(csId_), SetArgPointee<3>(csEp_), Return(0)));
 
@@ -337,7 +337,7 @@ TEST_F(IOTrackerAlignmentTest, TestUnalignedWrite5) {
             return MetaCacheErrorType::OK;
         }));
 
-    EXPECT_CALL(*mockMetaCache_, GetLeader(_, _, _, _, _, _))
+    EXPECT_CALL(*mockMetaCache_, GetLeader(_, _, _, _, _, _, _))
         .WillRepeatedly(
             DoAll(SetArgPointee<2>(csId_), SetArgPointee<3>(csEp_), Return(0)));
 
@@ -384,7 +384,7 @@ TEST_F(IOTrackerAlignmentTest, TestUnalignedWrite6) {
             return MetaCacheErrorType::OK;
         }));
 
-    EXPECT_CALL(*mockMetaCache_, GetLeader(_, _, _, _, _, _))
+    EXPECT_CALL(*mockMetaCache_, GetLeader(_, _, _, _, _, _, _))
         .WillRepeatedly(
             DoAll(SetArgPointee<2>(csId_), SetArgPointee<3>(csEp_), Return(0)));
 
@@ -431,7 +431,7 @@ TEST_F(IOTrackerAlignmentTest, TestUnalignedWrite7) {
             return MetaCacheErrorType::OK;
         }));
 
-    EXPECT_CALL(*mockMetaCache_, GetLeader(_, _, _, _, _, _))
+    EXPECT_CALL(*mockMetaCache_, GetLeader(_, _, _, _, _, _, _))
         .WillRepeatedly(
             DoAll(SetArgPointee<2>(csId_), SetArgPointee<3>(csEp_), Return(0)));
 

@@ -24,6 +24,7 @@
 #include <butil/endpoint.h>
 #include <brpc/channel.h>
 
+#include <cstring>
 #include <string>
 
 #include "test/client/fake/fakeMDS.h"
@@ -366,10 +367,10 @@ bool FakeMDS::CreateCopysetNode(bool enablecli) {
             }
 
             stub.CreateCopysetNode(&cntl, &request, &response, nullptr);
-            LOG(INFO) << "Created copyset member, "
-                << "poolid: " << iter.logicpoolid << ", "
-                << "copysetid: " << iter.copysetid << ", "
-                << "on chunkserver: " << server_addrs_[i] << ", ";
+            // LOG(INFO) << "Created copyset member, "
+            //     << "poolid: " << iter.logicpoolid << ", "
+            //     << "copysetid: " << iter.copysetid << ", "
+            //     << "on chunkserver: " << server_addrs_[i] << ", ";
 
             if (cntl.Failed()) {
                 LOG(ERROR) << cntl.ErrorText() << response.status();
@@ -425,7 +426,8 @@ void FakeMDS::CreateFakeChunkservers(bool enablecli) {
         }
 
         if (chunkservers_[i]->Start(server_addrs_[i], &options) != 0) {
-            LOG(FATAL) << "Fail to start Server";
+            LOG(FATAL) << "Fail to start Server, error: " << strerror(errno)
+                       << ", address: " << server_addrs_[i];
         }
         LOG(INFO) << "Created chunkserver: " << server_addrs_[i];
 

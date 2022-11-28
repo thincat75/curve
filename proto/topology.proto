@@ -73,6 +73,7 @@ message LogicalPoolData {
     required string userPolicy = 9;
     required bool availFlag = 10;
     optional bool scanEnable = 11;
+    optional bool ucpConnection = 12;
 }
 
 message PhysicalPoolData {
@@ -98,6 +99,9 @@ message ServerData {
     required uint32 zoneId = 7;
     required uint32 physicalPoolId = 8;
     required string desc = 9;
+
+    optional EndpointPB ucpInternalEndpoint = 13;
+    optional EndpointPB ucpExternalEndpoint = 14;
 }
 
 message ChunkServerData {
@@ -113,6 +117,9 @@ message ChunkServerData {
     required string mountPoint = 10;
     required int64 diskCapacity = 11;
     required int64 diskUsed = 12;
+
+    optional EndpointPB ucpInternalEp = 13;
+    optional EndpointPB ucpExternalEp = 14;
 }
 
 message CopysetData {
@@ -123,6 +130,7 @@ message CopysetData {
     optional bool availFlag = 5;
     optional uint64 lastScanSec = 6;
     optional bool lastScanConsistent = 7;
+    optional bool ucpConnection = 8;
 }
 
 // rpc struct defination
@@ -141,6 +149,14 @@ message ChunkServerInfo {
     required uint64 diskCapacity = 9;
     required uint64 diskUsed = 10;
     optional string externalIp = 11;
+
+    optional EndpointPB ucpInternalEp = 12;
+    optional EndpointPB ucpExternalEp = 13;
+}
+
+message EndpointPB {
+    required string ip = 1;
+    required int32 port = 2;
 }
 
 //chunkserver message
@@ -154,9 +170,12 @@ message ChunkServerRegistRequest {
     // already registed chunkserver should take chunkserverId & token
     optional uint32 chunkServerID = 6;
     optional string token = 7;
-    optional uint64 chunkFilepoolSize = 8;
-    optional bool   useChunkFilePoolAsWalPool = 9;
-    optional uint32 useChunkFilePoolAsWalPoolReserve = 10;
+    optional EndpointPB ucpInternalEndpoint= 8;
+    optional EndpointPB ucpExternalEndpoint = 9;
+
+    optional uint64 chunkFilepoolSize = 10;
+    optional bool   useChunkFilePoolAsWalPool = 11;
+    optional uint32 useChunkFilePoolAsWalPoolReserve = 12;
 };
 
 message ChunkServerRegistResponse {
@@ -236,6 +255,9 @@ message ServerRegistRequest {
     optional uint32 physicalPoolID = 8;
     optional string physicalPoolName = 9; //physicalPoolName is unique
     required string desc = 10;
+
+    optional EndpointPB ucpInternalEndpoint= 11;
+    optional EndpointPB ucpExternalEndpoint = 12;
 }
 
 message ServerRegistResponse {
@@ -361,6 +383,7 @@ message CreateLogicalPoolRequest {
     required bytes userPolicy = 6;                    //json body
     optional uint32 scatterWidth = 7;      //生成copyset依据的scatterWidth平均值
     optional AllocateStatus status = 8;
+    optional bool ucpConnection = 9;
 }
 
 message CreateLogicalPoolResponse {

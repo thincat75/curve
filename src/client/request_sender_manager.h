@@ -61,13 +61,25 @@ class RequestSenderManager : public Uncopyable {
      * @brief 如果csId对应的RequestSender不健康，就进行重置
      * @param csId chunkserver id
      */
-    void ResetSenderIfNotHealth(const ChunkServerID& csId);
+    void ResetSenderIfNotHealth(const ChunkServerID& csId,
+                                const butil::EndPoint& ep);
 
  private:
     // 读写锁，保护senderPool_
     curve::common::BthreadRWLock rwlock_;
-    // 请求发送链接的map，以ChunkServer ID为key
-    std::unordered_map<ChunkServerID, SenderPtr> senderPool_;
+
+    struct Key {
+        ChunkServerID id;  // chunkserver id
+        bool ucp;          // ucp connection or not
+    };
+
+    struct KeyComparator {
+        bool operator()(const Key& k1, const Key& k2) const {
+            return k1.id < k2.id || (k1.id == k2.id && k1.ucp < k2.ucp);
+        }
+    };
+
+    std::map<Key, SenderPtr, KeyComparator> senderPool_;
 };
 
 }   // namespace client

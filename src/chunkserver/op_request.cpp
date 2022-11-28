@@ -116,14 +116,28 @@ int ChunkOpRequest::Encode(const ChunkRequest *request,
                            const butil::IOBuf *data,
                            butil::IOBuf *log) {
     // 1.append request length
-    const uint32_t metaSize = butil::HostToNet32(request->ByteSize());
+    uint32_t metaSize = request->ByteSize();
+    // metaSize must be a multiple of dword
+    uint32_t dwordWidth = 4;
+    uint32_t dwordMask = dwordWidth - 1;
+    uint32_t paddingSize = 0;
+    if (metaSize & dwordMask) {
+        metaSize = (metaSize + dwordMask) & (~dwordMask);
+        paddingSize =  metaSize - request->ByteSize();
+    }
+    metaSize = butil::HostToNet32(metaSize);
+    paddingSize = butil::HostToNet32(paddingSize);
     log->append(&metaSize, sizeof(uint32_t));
+    log->append(&paddingSize, sizeof(uint32_t));
     // 2.append op request
     butil::IOBufAsZeroCopyOutputStream wrapper(log);
     if (!request->SerializeToZeroCopyStream(&wrapper)) {
         LOG(ERROR) << "Fail to serialize request";
         return -1;
     }
+    butil::IOBuf padding;
+    padding.resize(paddingSize);
+    log->append(padding);
     // 3.append op data
     if (data != nullptr) {
         log->append(*data);
@@ -140,14 +154,20 @@ std::shared_ptr<ChunkOpRequest> ChunkOpRequest::Decode(butil::IOBuf log,
     log.cutn(&metaSize, sizeof(uint32_t));
     metaSize = butil::NetToHost32(metaSize);
 
+    uint32_t paddingSize = 0;
+    log.cutn(&paddingSize, sizeof(uint32_t));
+    paddingSize = butil::NetToHost32(paddingSize);
+
     butil::IOBuf meta;
-    log.cutn(&meta, metaSize);
+    log.cutn(&meta, metaSize - paddingSize);
     butil::IOBufAsZeroCopyInputStream wrapper(meta);
     bool ret = request->ParseFromZeroCopyStream(&wrapper);
     if (false == ret) {
         LOG(ERROR) << "failed deserialize";
         return nullptr;
     }
+    log.pop_front(paddingSize);
+
     data->swap(log);
 
     switch (request->optype()) {

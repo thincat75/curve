@@ -35,5 +35,6 @@ cc_library(
         "//src/mds/common:mds_common",
         "//src/mds/copyset",
         "//src/mds/nameserver2/allocstatistic:alloc_statistic",
+        "@com_google_absl//absl/types:optional",
     ],
 )

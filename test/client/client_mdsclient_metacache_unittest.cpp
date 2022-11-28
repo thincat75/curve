@@ -1823,7 +1823,7 @@ TEST_F(MDSClientTest, ListDir) {
 TEST(LibcurveInterface, InvokeWithOutInit) {
     CurveAioContext aioctx;
     UserInfo_t userinfo;
-    C_UserInfo_t *ui;
+    C_UserInfo_t* ui = nullptr;
 
     FileClient fc;
     ASSERT_EQ(-LIBCURVE_ERROR::FAILED, fc.Create("", userinfo, 0));

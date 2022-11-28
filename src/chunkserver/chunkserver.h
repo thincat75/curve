@@ -30,16 +30,42 @@
 #include "src/chunkserver/heartbeat.h"
 #include "src/chunkserver/scan_manager.h"
 #include "src/chunkserver/clone_manager.h"
-#include "src/chunkserver/register.h"
 #include "src/chunkserver/trash.h"
 #include "src/chunkserver/chunkserver_metrics.h"
 #include "src/chunkserver/concurrent_apply/concurrent_apply.h"
 #include "src/chunkserver/scan_service.h"
+#include "proto/chunkserver.pb.h"
 
 using ::curve::chunkserver::concurrent::ConcurrentApplyOption;
 
 namespace curve {
 namespace chunkserver {
+
+struct RegisterOptions;
+
+struct UcpOptions {
+    bool enable = false;
+    bool enableExternalServer = false;
+
+    std::string internalIp;
+    std::string externalIp;
+
+    int32_t internalPort;
+    int32_t externalPort;
+
+    static constexpr const char* kUcpEnableOption = "global.ucp_enable";
+    static constexpr const char* kUcpInternalIpOption =
+            "global.ucp_internal_ip";
+    static constexpr const char* kUcpInternalPortOption =
+            "global.ucp_internal_port";
+    static constexpr const char* kUcpEnableExternalServer =
+            "global.ucp_enable_external_server";
+    static constexpr const char* kUcpExternalIpOption =
+            "global.ucp_external_ip";
+    static constexpr const char* kUcpExternalPortOption =
+            "global.ucp_external_port";
+};
+
 class ChunkServer {
  public:
     /**

@@ -68,6 +68,7 @@ CURVE_GCC_TEST_FLAGS = [
     "-Wno-unused-function",
     "-Wno-unused-parameter",
     "-Wno-unused-result",
+    "-Wno-implicit-fallthrough",
 ]
 
 # FIXME: temporary disabled because triggered in many places

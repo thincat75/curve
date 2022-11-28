@@ -26,6 +26,8 @@ cc_binary(
                 "//src/mds/common:mds_common",
                 "//src/common:curve_common",
                 "//external:glog",
-                "//external:brpc"],
+                "//external:brpc",
+                "@com_google_absl//absl/types:optional",
+                ],
         copts = CURVE_DEFAULT_COPTS,
 )

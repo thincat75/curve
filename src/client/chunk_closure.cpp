@@ -260,7 +260,7 @@ void ClientClosure::Run() {
 }
 
 void ClientClosure::OnRpcFailed() {
-    client_->ResetSenderIfNotHealth(chunkserverID_);
+    client_->ResetSenderIfNotHealth(chunkserverID_, chunkserverEndPoint_);
 
     status_ = cntl_->ErrorCode();
 

@@ -253,6 +253,8 @@ class GetLeaderProxy : public std::enable_shared_from_this<GetLeaderProxy> {
             MetricHelper::IncremGetLeaderRetryTime(fileMetric);
             stub.GetLeader(&(closures_[i]->cntl), &request,
                            &(closures_[i]->response), closures_[i]);
+            LOG(INFO) << "sending GetLeader rpc to " 
+                << closures_[i]->cntl.remote_side();
         }
     }
 
@@ -381,9 +383,13 @@ int ServiceHelper::GetLeader(const GetLeaderInfo& getLeaderInfo,
                       << ", copysetid = " << getLeaderInfo.copysetId;
             continue;
         }
-
-        chunkserverIpPorts.emplace(
-            butil::endpoint2str(iter->externalAddr.addr_).c_str());
+        if (iter->hasUcpAddr) {
+            chunkserverIpPorts.emplace(
+                butil::endpoint2str(iter->ucpInternalAddr.addr_).c_str());
+        } else {
+            chunkserverIpPorts.emplace(
+                butil::endpoint2str(iter->externalAddr.addr_).c_str());
+        }
     }
 
     std::shared_ptr<GetLeaderProxy> proxy(std::make_shared<GetLeaderProxy>());

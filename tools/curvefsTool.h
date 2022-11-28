@@ -42,6 +42,7 @@
 #include "src/common/string_util.h"
 #include "src/common/configuration.h"
 
+#include "absl/types/optional.h"
 
 namespace curve {
 namespace mds {
@@ -55,6 +56,16 @@ struct CurveServerData {
     uint32_t externalPort;
     std::string zoneName;
     std::string physicalPoolName;
+    // absl::optional<std::string> ucpInternalIp;
+    // absl::optional<uint32_t> ucpInternal
+
+    struct ServerEndpoint {
+        std::string ip;
+        uint32_t port;
+    };
+
+    absl::optional<ServerEndpoint> ucpExternalEp;
+    absl::optional<ServerEndpoint> ucpInternalEp;
 };
 
 struct CurveLogicalPoolData {
@@ -66,6 +77,7 @@ struct CurveLogicalPoolData {
     uint64_t copysetNum;
     uint32_t zoneNum;
     uint32_t scatterwidth;
+    bool useUcp = false;
 };
 
 struct CurveZoneData {
