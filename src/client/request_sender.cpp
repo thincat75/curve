@@ -158,6 +158,118 @@ int RequestSender::WriteChunk(const ChunkIDInfo& idinfo,
     return 0;
 }
 
+int RequestSender::WriteChunk(RequestContext *ctx,
+                              ClientClosure *done) {
+    const ChunkIDInfo& idinfo = ctx->idinfo_;
+    uint64_t fileId = ctx->fileId_;
+    uint64_t epoch = ctx->epoch_;
+    uint64_t sn = ctx->seq_;
+    const std::vector<uint64_t>& snaps = ctx->snaps_;
+    const butil::IOBuf& data = ctx->writeData_;
+    off_t offset = ctx->offset_;
+    size_t length = ctx->rawlength_;
+    const RequestSourceInfo& sourceInfo = ctx->sourceInfo_;
+
+    brpc::ClosureGuard doneGuard(done);
+    brpc::Controller *cntl = new brpc::Controller();
+    ChunkResponse *response = new ChunkResponse();
+
+    DVLOG(9) << "Sending request, buf header: "
+             << " buf: " << *(unsigned int *)(data.fetch1());
+
+    UpdateRpcRPS(done, OpType::WRITE);
+    SetRpcStuff(done, cntl, response);
+
+    ChunkRequest request;
+    request.set_optype(curve::chunkserver::CHUNK_OP_TYPE::CHUNK_OP_WRITE);
+    request.set_logicpoolid(idinfo.lpid_);
+    request.set_copysetid(idinfo.cpid_);
+    request.set_chunkid(idinfo.cid_);
+    request.set_sn(sn);
+    for(uint64_t seq:snaps) {
+        request.add_snaps(seq);
+    }
+    request.set_offset(offset);
+    request.set_size(length);
+    request.set_fileid(fileId);
+    if (epoch != 0) {
+        request.set_epoch(epoch);
+    }
+
+    if ((ctx->filetype_ == FileType::INODE_CLONE_PAGEFILE) &&
+        (idinfo.isCloned_)) {
+        request.set_originchunkid(ctx->originChunkIdInfo_.cid_);
+        request.set_virtualchunkid(ctx->virtualChunkIdInfo_.cid_);
+        request.set_cloneno(ctx->cfinfo_.cloneNo);
+        for(int i = 0; i < ctx->cfinfo_.clones.size(); i++) {
+            auto cinfo = request.add_clones();
+            cinfo->set_cloneno(ctx->cfinfo_.clones[i].cloneNo);
+            cinfo->set_clonesn(ctx->cfinfo_.clones[i].cloneSn);
+        }
+    } else {
+        if (sourceInfo.IsValid()) {
+            request.set_clonefilesource(sourceInfo.cloneFileSource);
+            request.set_clonefileoffset(sourceInfo.cloneFileOffset);
+        }
+    }
+
+    cntl->request_attachment().append(data);
+    ChunkService_Stub stub(&channel_);
+    stub.WriteChunk(cntl, &request, response, doneGuard.release());
+
+    return 0;
+}
+
+int RequestSender::ReadChunk(RequestContext *ctx,
+                             ClientClosure *done) {
+    const ChunkIDInfo& idinfo = ctx->idinfo_;
+    uint64_t sn = ctx->seq_;
+    off_t offset = ctx->offset_;
+    size_t length = ctx->rawlength_;
+    uint64_t appliedindex = ctx->appliedindex_;
+    const RequestSourceInfo& sourceInfo = ctx->sourceInfo_;
+
+    brpc::ClosureGuard doneGuard(done);
+    brpc::Controller *cntl = new brpc::Controller();
+    ChunkResponse *response = new ChunkResponse();
+
+    UpdateRpcRPS(done, OpType::READ);
+    SetRpcStuff(done, cntl, response);
+
+    ChunkRequest request;
+    request.set_optype(curve::chunkserver::CHUNK_OP_TYPE::CHUNK_OP_READ);
+    request.set_logicpoolid(idinfo.lpid_);
+    request.set_copysetid(idinfo.cpid_);
+    request.set_chunkid(idinfo.cid_);
+    request.set_offset(offset);
+    request.set_size(length);
+
+    if (ctx->filetype_ == FileType::INODE_CLONE_PAGEFILE) {
+        request.set_originchunkid(ctx->originChunkIdInfo_.cid_);
+        request.set_virtualchunkid(ctx->virtualChunkIdInfo_.cid_);
+        request.set_cloneno(ctx->cfinfo_.cloneNo);
+        for(int i = 0; i < ctx->cfinfo_.clones.size(); i++) {
+            auto cinfo = request.add_clones();
+            cinfo->set_cloneno(ctx->cfinfo_.clones[i].cloneNo);
+            cinfo->set_clonesn(ctx->cfinfo_.clones[i].cloneSn);
+        }
+    } else {
+        if (sourceInfo.IsValid()) {
+            request.set_clonefilesource(sourceInfo.cloneFileSource);
+            request.set_clonefileoffset(sourceInfo.cloneFileOffset);
+        }
+    }
+
+    if (iosenderopt_.chunkserverEnableAppliedIndexRead && appliedindex > 0) {
+        request.set_appliedindex(appliedindex);
+    }
+
+    ChunkService_Stub stub(&channel_);
+    stub.ReadChunk(cntl, &request, response, doneGuard.release());
+
+    return 0;
+}
+
 int RequestSender::ReadChunkSnapshot(const ChunkIDInfo& idinfo,
                                      uint64_t sn,
                                      const std::vector<uint64_t>& snaps,

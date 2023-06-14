@@ -99,7 +99,10 @@ void ChunkServiceImpl::WriteChunk(RpcController *controller,
                                                request,
                                                response,
                                                done);
+
     CHECK(nullptr != closure) << "new chunk service closure failed";
+
+    LOG(INFO) << "receive write chunk request: " << request->ShortDebugString();
 
     brpc::ClosureGuard doneGuard(closure);
 
@@ -225,7 +228,10 @@ void ChunkServiceImpl::ReadChunk(RpcController *controller,
                                                request,
                                                response,
                                                done);
+
     CHECK(nullptr != closure) << "new chunk service closure failed";
+
+    LOG(INFO) << "receive read chunk request: " << request->ShortDebugString();
 
     brpc::ClosureGuard doneGuard(closure);
 
