@@ -95,6 +95,12 @@ class RequestSender {
                    const RequestSourceInfo& sourceInfo,
                    ClientClosure *done);
 
+    int WriteChunk(RequestContext *ctx,
+                   ClientClosure *done);
+
+    int ReadChunk(RequestContext *ctx,
+                  ClientClosure *done);
+
     /**
      * 读Chunk快照文件
      * @param idinfo为chunk相关的id信息
