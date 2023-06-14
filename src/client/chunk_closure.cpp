@@ -182,6 +182,10 @@ void ClientClosure::Run() {
 
         status_ = GetResponseStatus();
 
+        LOG(INFO) << "recevied from: " << cntl_->remote_side()
+                  << ", callid: " << cntl_->call_id()
+                  << ", response: " << response_->ShortDebugString();
+
         switch (status_) {
         // 1. 请求成功
         case CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS:

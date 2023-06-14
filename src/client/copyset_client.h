@@ -120,6 +120,10 @@ class CopysetClient {
                    const RequestSourceInfo& sourceInfo,
                    Closure *done);
 
+    int WriteChunk(RequestContext* ctx, Closure *done);
+
+    int ReadChunk(RequestContext* ctx, Closure* done);
+
     /**
      * 读Chunk快照文件
      * @param idinfo为chunk相关的id信息
