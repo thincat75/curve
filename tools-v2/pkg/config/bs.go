@@ -42,7 +42,11 @@ const (
 	CURVEBS_ETCDADDR                  = "etcdaddr"
 	VIPER_CURVEBS_ETCDADDR            = "curvebs.etcdAddr"
 	CURVEBS_PATH                      = "path"
+	CURVEBS_SRCPATH                   = "srcpath"
+	CURVEBS_DSTPATH                   = "dstpath"
 	VIPER_CURVEBS_PATH                = "curvebs.path"
+	VIPER_CURVEBS_SRCPATH             = "curvebs.srcpath"
+	VIPER_CURVEBS_DSTPATH             = "curvebs.dstpath"
 	CURVEBS_DEFAULT_PATH              = "/test"
 	CURVEBS_USER                      = "user"
 	VIPER_CURVEBS_USER                = "curvebs.root.user"
@@ -65,6 +69,8 @@ const (
 	VIPER_CURVEBS_OFFSET              = "curvebs.offset"
 	CURVEBS_SIZE                      = "size"
 	VIPER_CURVEBS_SIZE                = "curvebs.size"
+	CURVEBS_SEQ                       = "seq"
+	VIPER_CURVEBS_SEQ                 = "curvebs.seq"
 	CURVEBS_DEFAULT_SIZE              = uint64(10)
 	CURVEBS_TYPE                      = "type"
 	VIPER_CURVEBS_TYPE                = "curvebs.type"
@@ -137,6 +143,8 @@ var (
 		CURVEBS_MDSADDR:             VIPER_CURVEBS_MDSADDR,
 		CURVEBS_MDSDUMMYADDR:        VIPER_CURVEBS_MDSDUMMYADDR,
 		CURVEBS_PATH:                VIPER_CURVEBS_PATH,
+		CURVEBS_SRCPATH:             VIPER_CURVEBS_SRCPATH,
+		CURVEBS_DSTPATH:             VIPER_CURVEBS_DSTPATH,
 		CURVEBS_USER:                VIPER_CURVEBS_USER,
 		CURVEBS_PASSWORD:            VIPER_CURVEBS_PASSWORD,
 		CURVEBS_ETCDADDR:            VIPER_CURVEBS_ETCDADDR,
@@ -146,6 +154,7 @@ var (
 		CURVEBS_CLUSTERMAP:          VIPER_CURVEBS_CLUSTERMAP,
 		CURVEBS_OFFSET:              VIPER_CURVEBS_OFFSET,
 		CURVEBS_SIZE:                VIPER_CURVEBS_SIZE,
+		CURVEBS_SEQ:                 VIPER_CURVEBS_SEQ,
 		CURVEBS_STRIPE_UNIT:         VIPER_CURVEBS_STRIPE_UNIT,
 		CURVEBS_STRIPE_COUNT:        VIPER_CURVEBS_STRIPE_COUNT,
 		CURVEBS_LIMIT:               VIPER_CURVEBS_LIMIT,
@@ -406,6 +415,10 @@ func AddBsUserOptionFlag(cmd *cobra.Command) {
 	AddBsStringOptionFlag(cmd, CURVEBS_USER, "user name")
 }
 
+func AddBsUserRequiredFlag(cmd *cobra.Command) {
+	AddBsStringRequiredFlag(cmd, CURVEBS_USER, "user name")
+}
+
 // password
 func AddBsPasswordOptionFlag(cmd *cobra.Command) {
 	AddBsStringOptionFlag(cmd, CURVEBS_PASSWORD, "user password")
@@ -468,6 +481,14 @@ func AddBsPathRequiredFlag(cmd *cobra.Command) {
 	AddBsStringRequiredFlag(cmd, CURVEBS_PATH, "file path")
 }
 
+func AddBsSrcPathRequiredFlag(cmd *cobra.Command) {
+	AddBsStringRequiredFlag(cmd, CURVEBS_SRCPATH, "source file path")
+}
+
+func AddBsDstPathRequiredFlag(cmd *cobra.Command) {
+	AddBsStringRequiredFlag(cmd, CURVEBS_DSTPATH, "destiation file path")
+}
+
 func AddBsLogicalPoolIdRequiredFlag(cmd *cobra.Command) {
 	AddBsUint32RequiredFlag(cmd, CURVEBS_LOGIC_POOL_ID, "logical pool id")
 }
@@ -498,6 +519,10 @@ func AddBsOffsetRequiredFlag(cmd *cobra.Command) {
 
 func AddBsSizeRequiredFlag(cmd *cobra.Command) {
 	AddBsUint64RequiredFlag(cmd, CURVEBS_SIZE, "size, uint is GiB")
+}
+
+func AddBsSeqRequiredFlag(cmd *cobra.Command) {
+	AddBsUint64RequiredFlag(cmd, CURVEBS_SEQ, "seq num")
 }
 
 func AddBsFileTypeRequiredFlag(cmd *cobra.Command) {
