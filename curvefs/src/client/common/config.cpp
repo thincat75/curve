@@ -50,6 +50,56 @@ DEFINE_bool(enableCto, true, "acheieve cto consistency");
 DEFINE_bool(useFakeS3, false,
             "Use fake s3 to inject more metadata for testing metaserver");
 DEFINE_bool(supportKVcache, false, "use kvcache to speed up sharing");
+DEFINE_bool(access_logging, true, "enable access log");
+
+/**
+ * use curl -L fuseclient:port/flags/fuseClientAvgWriteBytes?setvalue=true
+ * for dynamic parameter configuration
+ */
+static bool pass_uint64(const char *, uint64_t) { return true; }
+
+DEFINE_uint64(fuseClientAvgWriteBytes, 0,
+              "the write throttle bps of fuse client");
+DEFINE_validator(fuseClientAvgWriteBytes, &pass_uint64);
+DEFINE_uint64(fuseClientBurstWriteBytes, 0,
+              "the write burst bps of fuse client");
+DEFINE_validator(fuseClientBurstWriteBytes, &pass_uint64);
+DEFINE_uint64(fuseClientBurstWriteBytesSecs, 180,
+              "the times that write burst bps can continue");
+DEFINE_validator(fuseClientBurstWriteBytesSecs, &pass_uint64);
+
+
+DEFINE_uint64(fuseClientAvgWriteIops, 0,
+              "the write throttle iops of fuse client");
+DEFINE_validator(fuseClientAvgWriteIops, &pass_uint64);
+DEFINE_uint64(fuseClientBurstWriteIops, 0,
+              "the write burst iops of fuse client");
+DEFINE_validator(fuseClientBurstWriteIops, &pass_uint64);
+DEFINE_uint64(fuseClientBurstWriteIopsSecs, 180,
+              "the times that write burst iops can continue");
+DEFINE_validator(fuseClientBurstWriteIopsSecs, &pass_uint64);
+
+
+DEFINE_uint64(fuseClientAvgReadBytes, 0,
+              "the Read throttle bps of fuse client");
+DEFINE_validator(fuseClientAvgReadBytes, &pass_uint64);
+DEFINE_uint64(fuseClientBurstReadBytes, 0,
+              "the Read burst bps of fuse client");
+DEFINE_validator(fuseClientBurstReadBytes, &pass_uint64);
+DEFINE_uint64(fuseClientBurstReadBytesSecs, 180,
+              "the times that Read burst bps can continue");
+DEFINE_validator(fuseClientBurstReadBytesSecs, &pass_uint64);
+
+
+DEFINE_uint64(fuseClientAvgReadIops, 0,
+              "the Read throttle iops of fuse client");
+DEFINE_validator(fuseClientAvgReadIops, &pass_uint64);
+DEFINE_uint64(fuseClientBurstReadIops, 0,
+              "the Read burst iops of fuse client");
+DEFINE_validator(fuseClientBurstReadIops, &pass_uint64);
+DEFINE_uint64(fuseClientBurstReadIopsSecs, 180,
+              "the times that Read burst iops can continue");
+DEFINE_validator(fuseClientBurstReadIopsSecs, &pass_uint64);
 
 void InitMdsOption(Configuration *conf, MdsOption *mdsOpt) {
     conf->GetValueFatalIfFail("mdsOpt.mdsMaxRetryMS", &mdsOpt->mdsMaxRetryMS);
@@ -157,8 +207,6 @@ void InitDiskCacheOption(Configuration *conf,
 
 void InitS3Option(Configuration *conf, S3Option *s3Opt) {
     conf->GetValueFatalIfFail("s3.fakeS3", &FLAGS_useFakeS3);
-    conf->GetValueFatalIfFail("s3.fuseMaxSize",
-                              &s3Opt->s3ClientAdaptorOpt.fuseMaxSize);
     conf->GetValueFatalIfFail("s3.pageSize",
                               &s3Opt->s3ClientAdaptorOpt.pageSize);
     conf->GetValueFatalIfFail("s3.prefetchBlocks",
@@ -175,6 +223,8 @@ void InitS3Option(Configuration *conf, S3Option *s3Opt) {
                               &s3Opt->s3ClientAdaptorOpt.writeCacheMaxByte);
     conf->GetValueFatalIfFail("s3.readCacheMaxByte",
                               &s3Opt->s3ClientAdaptorOpt.readCacheMaxByte);
+    conf->GetValueFatalIfFail("s3.readCacheThreads",
+                              &s3Opt->s3ClientAdaptorOpt.readCacheThreads);
     conf->GetValueFatalIfFail("s3.nearfullRatio",
                               &s3Opt->s3ClientAdaptorOpt.nearfullRatio);
     conf->GetValueFatalIfFail("s3.baseSleepUs",
@@ -243,6 +293,55 @@ void InitKVClientManagerOpt(Configuration *conf,
                               &config->getThreadPooln);
 }
 
+void InitFileSystemOption(Configuration* c, FileSystemOption* option) {
+    c->GetValueFatalIfFail("fs.cto", &option->cto);
+    c->GetValueFatalIfFail("fs.cto", &FLAGS_enableCto);
+    c->GetValueFatalIfFail("fs.disableXattr", &option->disableXattr);
+    c->GetValueFatalIfFail("fs.maxNameLength", &option->maxNameLength);
+    c->GetValueFatalIfFail("fs.accessLogging", &FLAGS_access_logging);
+    {  // kernel cache option
+        auto o = &option->kernelCacheOption;
+        c->GetValueFatalIfFail("fs.kernelCache.attrTimeoutSec",
+                               &o->attrTimeoutSec);
+        c->GetValueFatalIfFail("fs.kernelCache.dirAttrTimeoutSec",
+                               &o->dirAttrTimeoutSec);
+        c->GetValueFatalIfFail("fs.kernelCache.entryTimeoutSec",
+                               &o->entryTimeoutSec);
+        c->GetValueFatalIfFail("fs.kernelCache.dirEntryTimeoutSec",
+                               &o->dirEntryTimeoutSec);
+    }
+    {  // lookup cache option
+        auto o = &option->lookupCacheOption;
+        c->GetValueFatalIfFail("fs.lookupCache.lruSize",
+                               &o->lruSize);
+        c->GetValueFatalIfFail("fs.lookupCache.negativeTimeoutSec",
+                               &o->negativeTimeoutSec);
+        c->GetValueFatalIfFail("fs.lookupCache.minUses",
+                               &o->minUses);
+    }
+    {  // dir cache option
+        auto o = &option->dirCacheOption;
+        c->GetValueFatalIfFail("fs.dirCache.lruSize", &o->lruSize);
+    }
+    {  // open file option
+        auto o = &option->openFilesOption;
+        c->GetValueFatalIfFail("fs.openFile.lruSize", &o->lruSize);
+    }
+    {  // attr watcher option
+        auto o = &option->attrWatcherOption;
+        c->GetValueFatalIfFail("fs.attrWatcher.lruSize", &o->lruSize);
+    }
+    {  // rpc option
+        auto o = &option->rpcOption;
+        c->GetValueFatalIfFail("fs.rpc.listDentryLimit", &o->listDentryLimit);
+    }
+    {  // defer sync option
+        auto o = &option->deferSyncOption;
+        c->GetValueFatalIfFail("fs.deferSync.delay", &o->delay);
+        c->GetValueFatalIfFail("fs.deferSync.deferDirMtime", &o->deferDirMtime);
+    }
+}
+
 void SetBrpcOpt(Configuration *conf) {
     curve::common::GflagsLoadValueFromConfIfCmdNotSet dummy;
     dummy.Load(conf, "defer_close_second", "rpc.defer.close.second",
@@ -263,36 +362,16 @@ void InitFuseClientOption(Configuration *conf, FuseClientOption *clientOption) {
     InitLeaseOpt(conf, &clientOption->leaseOpt);
     InitRefreshDataOpt(conf, &clientOption->refreshDataOption);
     InitKVClientManagerOpt(conf, &clientOption->kvClientManagerOpt);
+    InitFileSystemOption(conf, &clientOption->fileSystemOption);
 
-    conf->GetValueFatalIfFail("fuseClient.attrTimeOut",
-                              &clientOption->attrTimeOut);
-    conf->GetValueFatalIfFail("fuseClient.entryTimeOut",
-                              &clientOption->entryTimeOut);
     conf->GetValueFatalIfFail("fuseClient.listDentryLimit",
                               &clientOption->listDentryLimit);
     conf->GetValueFatalIfFail("fuseClient.listDentryThreads",
                               &clientOption->listDentryThreads);
-    conf->GetValueFatalIfFail("fuseClient.flushPeriodSec",
-                              &clientOption->flushPeriodSec);
-    conf->GetValueFatalIfFail("fuseClient.maxNameLength",
-                              &clientOption->maxNameLength);
-    conf->GetValueFatalIfFail("fuseClient.iCacheLruSize",
-                              &clientOption->iCacheLruSize);
-    conf->GetValueFatalIfFail("fuseClient.dCacheLruSize",
-                              &clientOption->dCacheLruSize);
-    conf->GetValueFatalIfFail("fuseClient.enableICacheMetrics",
-                              &clientOption->enableICacheMetrics);
-    conf->GetValueFatalIfFail("fuseClient.enableDCacheMetrics",
-                              &clientOption->enableDCacheMetrics);
-    conf->GetValueFatalIfFail("fuseClient.lruTimeOutSec",
-                              &clientOption->lruTimeOutSec);
     conf->GetValueFatalIfFail("client.dummyServer.startPort",
                               &clientOption->dummyServerStartPort);
     conf->GetValueFatalIfFail("fuseClient.enableMultiMountPointRename",
                               &clientOption->enableMultiMountPointRename);
-    conf->GetValueFatalIfFail("fuseClient.disableXattr",
-                              &clientOption->disableXattr);
-    conf->GetValueFatalIfFail("fuseClient.cto", &FLAGS_enableCto);
     conf->GetValueFatalIfFail("fuseClient.downloadMaxRetryTimes",
                               &clientOption->downloadMaxRetryTimes);
     conf->GetValueFatalIfFail("fuseClient.warmupThreadsNum",
@@ -302,12 +381,33 @@ void InitFuseClientOption(Configuration *conf, FuseClientOption *clientOption) {
         << "Not found `fuseClient.enableSplice` in conf, use default value `"
         << std::boolalpha << clientOption->enableFuseSplice << '`';
 
-    // if enableCto, attr and entry cache must invalid
-    if (FLAGS_enableCto) {
-        clientOption->attrTimeOut = 0;
-        clientOption->entryTimeOut = 0;
-    }
+    conf->GetValueFatalIfFail("fuseClient.throttle.avgWriteBytes",
+                              &FLAGS_fuseClientAvgWriteBytes);
+    conf->GetValueFatalIfFail("fuseClient.throttle.burstWriteBytes",
+                              &FLAGS_fuseClientBurstWriteBytes);
+    conf->GetValueFatalIfFail("fuseClient.throttle.burstWriteBytesSecs",
+                              &FLAGS_fuseClientBurstWriteBytesSecs);
 
+    conf->GetValueFatalIfFail("fuseClient.throttle.avgWriteIops",
+                              &FLAGS_fuseClientAvgWriteIops);
+    conf->GetValueFatalIfFail("fuseClient.throttle.burstWriteIops",
+                              &FLAGS_fuseClientBurstWriteIops);
+    conf->GetValueFatalIfFail("fuseClient.throttle.burstWriteIopsSecs",
+                              &FLAGS_fuseClientBurstWriteIopsSecs);
+
+    conf->GetValueFatalIfFail("fuseClient.throttle.avgReadBytes",
+                              &FLAGS_fuseClientAvgReadBytes);
+    conf->GetValueFatalIfFail("fuseClient.throttle.burstReadBytes",
+                              &FLAGS_fuseClientBurstReadBytes);
+    conf->GetValueFatalIfFail("fuseClient.throttle.burstReadBytesSecs",
+                              &FLAGS_fuseClientBurstReadBytesSecs);
+
+    conf->GetValueFatalIfFail("fuseClient.throttle.avgReadIops",
+                              &FLAGS_fuseClientAvgReadIops);
+    conf->GetValueFatalIfFail("fuseClient.throttle.burstReadIops",
+                              &FLAGS_fuseClientBurstReadIops);
+    conf->GetValueFatalIfFail("fuseClient.throttle.burstReadIopsSecs",
+                              &FLAGS_fuseClientBurstReadIopsSecs);
     SetBrpcOpt(conf);
 }
 
@@ -315,6 +415,7 @@ void SetFuseClientS3Option(FuseClientOption *clientOption,
     const S3InfoOption &fsS3Opt) {
     clientOption->s3Opt.s3ClientAdaptorOpt.blockSize = fsS3Opt.blockSize;
     clientOption->s3Opt.s3ClientAdaptorOpt.chunkSize = fsS3Opt.chunkSize;
+    clientOption->s3Opt.s3ClientAdaptorOpt.objectPrefix = fsS3Opt.objectPrefix;
     clientOption->s3Opt.s3AdaptrOpt.s3Address = fsS3Opt.s3Address;
     clientOption->s3Opt.s3AdaptrOpt.ak = fsS3Opt.ak;
     clientOption->s3Opt.s3AdaptrOpt.sk = fsS3Opt.sk;
@@ -329,6 +430,7 @@ void S3Info2FsS3Option(const curvefs::common::S3Info& s3,
     fsS3Opt->bucketName = s3.bucketname();
     fsS3Opt->blockSize = s3.blocksize();
     fsS3Opt->chunkSize = s3.chunksize();
+    fsS3Opt->objectPrefix = s3.has_objectprefix() ? s3.objectprefix() : 0;
 }
 
 }  // namespace common

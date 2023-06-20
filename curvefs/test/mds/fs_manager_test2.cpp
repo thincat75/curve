@@ -159,7 +159,6 @@ TEST_F(FsManagerTest2, CreateFoundConflictFsNameAndNotIdenticalToPreviousOne) {
     std::string fsname = "hello";
     FSType type = FSType::TYPE_S3;
     uint64_t blocksize = 4 * 1024;
-    bool enableSumInDir = false;
     FsDetail detail;
     auto* s3Info = detail.mutable_s3info();
     s3Info->set_ak("hello");
@@ -247,7 +246,6 @@ TEST_F(FsManagerTest2, CreateFoundUnCompleteOperation) {
     std::string fsname = "hello";
     FSType type = FSType::TYPE_S3;
     uint64_t blocksize = 4 * 1024;
-    bool enableSumInDir = false;
     FsDetail detail;
     auto* s3Info = detail.mutable_s3info();
     s3Info->set_ak("hello");
@@ -330,7 +328,6 @@ TEST_F(FsManagerTest2, createHybridFs) {
     std::string fsname = "hello";
     FSType type = FSType::TYPE_HYBRID;
     uint64_t blocksize = 4 * 1024;
-    bool enableSumInDir = false;
     FsDetail detail;
     auto* s3Info = detail.mutable_s3info();
     s3Info->set_ak("hello");
@@ -339,6 +336,7 @@ TEST_F(FsManagerTest2, createHybridFs) {
     s3Info->set_bucketname("hello");
     s3Info->set_blocksize(4 * 1024);
     s3Info->set_chunksize(16 * 1024 * 1024);
+    s3Info->set_objectprefix(0);
 
     FsInfo fsinfo;
     fsinfo.set_status(FsStatus::NEW);

@@ -55,10 +55,11 @@
 
 uint32_t chunk_size = 4 * 1024 * 1024;
 uint32_t segment_size = 1 * 1024 * 1024 * 1024;
-std::string mdsMetaServerAddr = "127.0.0.1:29104";  // NOLINT
-std::string configpath = "./test/client/configs/client_mdsclient_metacache.conf";  // NOLINT
+std::string mdsMetaServerAddr = "127.0.0.1:29104";              // NOLINT
+std::string configpath =                                        // NOLINT
+    "./test/client/configs/client_mdsclient_metacache.conf";    // NOLINT
 
-extern curve::client::FileClient* globalclient;
+extern curve::client::FileClient *globalclient;
 
 namespace curve {
 namespace client {
@@ -190,7 +191,6 @@ TEST_F(MDSClientTest, Createfile) {
 
 TEST_F(MDSClientTest, MkDir) {
     std::string dirpath = "/1";
-    size_t len = 4 * 1024 * 1024;
     // set response file exist
     ::curve::mds::CreateFileResponse response;
     response.set_statuscode(::curve::mds::StatusCode::kFileExists);
@@ -244,7 +244,6 @@ TEST_F(MDSClientTest, MkDir) {
 
 TEST_F(MDSClientTest, Closefile) {
     std::string filename = "/1_userinfo_";
-    size_t len = 4 * 1024 * 1024;
     // file not exist
     ::curve::mds::CloseFileResponse response;
     response.set_statuscode(::curve::mds::StatusCode::kFileNotExists);
@@ -289,7 +288,6 @@ TEST_F(MDSClientTest, Closefile) {
 
 TEST_F(MDSClientTest, Openfile) {
     std::string filename = "/1_userinfo_";
-    size_t len = 4 * 1024 * 1024;
     /**
      * set openfile response
      */
@@ -635,7 +633,6 @@ TEST_F(MDSClientTest, Extendfile) {
 TEST_F(MDSClientTest, Deletefile) {
     LOG(INFO) << "Deletefile=======================================";
     std::string filename1 = "/1_userinfo_";
-    uint64_t newsize = 10 * 1024 * 1024 * 1024ul;
 
     // set response file exist
     ::curve::mds::DeleteFileResponse response;
@@ -723,7 +720,6 @@ TEST_F(MDSClientTest, Deletefile) {
 
 TEST_F(MDSClientTest, Rmdir) {
     std::string filename1 = "/1/";
-    uint64_t newsize = 10 * 1024 * 1024 * 1024ul;
 
     // set response dir not exist
     ::curve::mds::DeleteFileResponse response;
@@ -895,9 +891,9 @@ TEST_F(MDSClientTest, GetFileInfo) {
     curvefsservice.SetGetFileInfoFakeReturn(fakeret2);
     curvefsservice.CleanRetryTimes();
 
-    ASSERT_EQ(LIBCURVE_ERROR::FAILED,
-              mdsclient_.GetFileInfo(filename.c_str(), userinfo,
-                  finfo, &fEpoch));
+    ASSERT_EQ(
+        LIBCURVE_ERROR::FAILED,
+        mdsclient_.GetFileInfo(filename.c_str(), userinfo, finfo, &fEpoch));
 
     delete fakeret;
     delete fakeret2;
@@ -912,16 +908,17 @@ TEST_F(MDSClientTest, GetOrAllocateSegment) {
     fi.chunksize = 4 * 1024 * 1024;
     fi.segmentsize = 1 * 1024 * 1024 * 1024ul;
 
-    std::chrono::system_clock::time_point start, end;
-    auto startTimer = [&start]() { start = std::chrono::system_clock::now(); };
-    auto endTimer = [&end]() { end = std::chrono::system_clock::now(); };
-    auto checkTimer = [&start, &end](uint64_t min, uint64_t max) {
-        auto elpased =
-            std::chrono::duration_cast<std::chrono::milliseconds>(end - start)
-                .count();
-        ASSERT_GE(elpased, min);
-        ASSERT_LE(elpased, max);
-    };
+    // std::chrono::system_clock::time_point start, end;
+    // auto startTimer = [&start]() { start = std::chrono::system_clock::now();
+    // }; auto endTimer = [&end]() { end = std::chrono::system_clock::now(); };
+    // auto checkTimer = [&start, &end](uint64_t min, uint64_t max) {
+    //     auto elpased =
+    //         std::chrono::duration_cast<std::chrono::milliseconds>(end -
+    //         start)
+    //             .count();
+    //     ASSERT_GE(elpased, min);
+    //     ASSERT_LE(elpased, max);
+    // };
 
     // TEST CASE: GetOrAllocateSegment failed, block until response ok
     // curve::mds::GetOrAllocateSegmentResponse resp;
@@ -1102,8 +1099,8 @@ TEST_F(MDSClientTest, GetServerList) {
     response_1.set_statuscode(0);
     uint32_t chunkserveridc = 1;
 
-    ::curve::common::ChunkServerLocation* cslocs;
-    ::curve::mds::topology::CopySetServerInfo* csinfo;
+    ::curve::common::ChunkServerLocation *cslocs;
+    ::curve::mds::topology::CopySetServerInfo *csinfo;
     for (int j = 0; j < 256; j++) {
         csinfo = response_1.add_csinfo();
         csinfo->set_copysetid(j);
@@ -1264,8 +1261,8 @@ TEST_F(MDSClientTest, GetLeaderTest) {
     response_1.set_statuscode(0);
     uint32_t chunkserveridc = 1;
 
-    ::curve::common::ChunkServerLocation* cslocs;
-    ::curve::mds::topology::CopySetServerInfo* csinfo;
+    ::curve::common::ChunkServerLocation *cslocs;
+    ::curve::mds::topology::CopySetServerInfo *csinfo;
     csinfo = response_1.add_csinfo();
     csinfo->set_copysetid(1234);
     for (int i = 0; i < 4; i++) {
@@ -1428,7 +1425,7 @@ TEST_F(MDSClientTest, CreateCloneFile) {
     ASSERT_EQ(LIBCURVE_ERROR::FAILED,
               mdsclient_.CreateCloneFile("source", "destination", userinfo,
                                          10 * 1024 * 1024, 0, 4 * 1024 * 1024,
-                                         0, 0, &finfo));
+                                         0, 0, "default", &finfo));
     // 认证失败
     curve::mds::CreateCloneFileResponse response1;
     response1.set_statuscode(::curve::mds::StatusCode::kOwnerAuthFail);
@@ -1441,7 +1438,7 @@ TEST_F(MDSClientTest, CreateCloneFile) {
     ASSERT_EQ(LIBCURVE_ERROR::AUTHFAIL,
               mdsclient_.CreateCloneFile("source", "destination", userinfo,
                                          10 * 1024 * 1024, 0, 4 * 1024 * 1024,
-                                         0, 0, &finfo));
+                                         0, 0, "default", &finfo));
     // 请求成功
     info->set_id(5);
     curve::mds::CreateCloneFileResponse response2;
@@ -1460,7 +1457,7 @@ TEST_F(MDSClientTest, CreateCloneFile) {
     ASSERT_EQ(LIBCURVE_ERROR::OK,
               mdsclient_.CreateCloneFile("source", "destination", userinfo,
                                          10 * 1024 * 1024, 0, 4 * 1024 * 1024,
-                                         0, 0, &finfo));
+                                         0, 0, "default", &finfo));
     ASSERT_EQ(5, finfo.id);
     ASSERT_EQ(cloneSource, finfo.sourceInfo.name);
     ASSERT_EQ(cloneLength, finfo.sourceInfo.length);
@@ -1707,7 +1704,6 @@ TEST_F(MDSClientTest, ListDir) {
 
     curvefsservice.SetListDir(fakeret);
 
-    int arrsize;
     std::vector<FileStatInfo> filestatVec;
     int ret = globalclient->Listdir(filename1, userinfo, &filestatVec);
     ASSERT_EQ(ret, -1 * LIBCURVE_ERROR::NOTEXIST);
@@ -1736,7 +1732,6 @@ TEST_F(MDSClientTest, ListDir) {
     curvefsservice.SetListDir(fakeret1);
     ASSERT_EQ(LIBCURVE_ERROR::OK,
               globalclient->Listdir(filename1, userinfo, &filestatVec));
-    int arraysize = 0;
     C_UserInfo_t cuserinfo;
     memcpy(cuserinfo.owner, "test", 5);
     FileStatInfo *filestat = new FileStatInfo[5];
@@ -1823,7 +1818,7 @@ TEST_F(MDSClientTest, ListDir) {
 TEST(LibcurveInterface, InvokeWithOutInit) {
     CurveAioContext aioctx;
     UserInfo_t userinfo;
-    C_UserInfo_t *ui;
+    C_UserInfo_t *ui = nullptr;
 
     FileClient fc;
     ASSERT_EQ(-LIBCURVE_ERROR::FAILED, fc.Create("", userinfo, 0));
@@ -1930,8 +1925,7 @@ class ServiceHelperGetLeaderTest : public MDSClientTest {
         }
     }
 
-    GetLeaderResponse2
-    MakeResponse(const curve::client::PeerAddr &addr) {
+    GetLeaderResponse2 MakeResponse(const curve::client::PeerAddr &addr) {
         GetLeaderResponse2 response;
         curve::common::Peer *peer = new curve::common::Peer();
         peer->set_address(addr.ToString());
@@ -2003,8 +1997,7 @@ TEST_F(ServiceHelperGetLeaderTest, NormalTest) {
 
     // 测试第二次拉取新的leader，直接跳过第一个chunkserver，查找第2，3两个
     int32_t currentLeaderIndex = 0;
-    curve::client::PeerAddr currentLeader =
-        internalAddrs[currentLeaderIndex];
+    curve::client::PeerAddr currentLeader = internalAddrs[currentLeaderIndex];
 
     response = MakeResponse(currentLeader);
     fakeret1 = FakeReturn(nullptr, static_cast<void *>(&response));
@@ -2296,7 +2289,8 @@ class MDSClientRefreshSessionTest : public ::testing::Test {
     void SetUp() override {
         ASSERT_EQ(0, server_.AddService(&curveFsService_,
                                         brpc::SERVER_DOESNT_OWN_SERVICE));
-        ASSERT_EQ(0, server_.Start(kServerAddress, nullptr));
+        ASSERT_EQ(0, server_.Start(0, nullptr));
+        serverAddress_ = butil::endpoint2str(server_.listen_address()).c_str();
     }
 
     void TearDown() override {
@@ -2305,7 +2299,8 @@ class MDSClientRefreshSessionTest : public ::testing::Test {
     }
 
  protected:
-    const char *kServerAddress = "127.0.0.1:21000";
+    std::string serverAddress_;
+    const std::string kLocalIp = "127.0.0.1";
     const uint32_t kTestPort = 1234;
 
     brpc::Server server_;
@@ -2315,11 +2310,11 @@ class MDSClientRefreshSessionTest : public ::testing::Test {
 TEST_F(MDSClientRefreshSessionTest, StartDummyServerTest) {
     curve::client::ClientDummyServerInfo::GetInstance().SetRegister(true);
     curve::client::ClientDummyServerInfo::GetInstance().SetPort(kTestPort);
-    curve::client::ClientDummyServerInfo::GetInstance().SetIP(kServerAddress);
+    curve::client::ClientDummyServerInfo::GetInstance().SetIP(kLocalIp);
 
     MDSClient mdsClient;
     MetaServerOption opt;
-    opt.rpcRetryOpt.addrs.push_back(kServerAddress);
+    opt.rpcRetryOpt.addrs.push_back(serverAddress_);
     ASSERT_EQ(0, mdsClient.Initialize(opt));
 
     curve::mds::ReFreshSessionRequest request;
@@ -2338,7 +2333,7 @@ TEST_F(MDSClientRefreshSessionTest, StartDummyServerTest) {
     ASSERT_TRUE(request.has_clientport());
     ASSERT_TRUE(request.has_clientip());
     ASSERT_EQ(request.clientport(), kTestPort);
-    ASSERT_EQ(request.clientip(), kServerAddress);
+    ASSERT_EQ(request.clientip(), kLocalIp);
 }
 
 TEST_F(MDSClientRefreshSessionTest, NoStartDummyServerTest) {
@@ -2346,7 +2341,7 @@ TEST_F(MDSClientRefreshSessionTest, NoStartDummyServerTest) {
 
     MDSClient mdsClient;
     MetaServerOption opt;
-    opt.rpcRetryOpt.addrs.push_back(kServerAddress);
+    opt.rpcRetryOpt.addrs.push_back(serverAddress_);
     ASSERT_EQ(0, mdsClient.Initialize(opt));
 
     curve::mds::ReFreshSessionRequest request;
@@ -2369,8 +2364,8 @@ TEST_F(MDSClientRefreshSessionTest, NoStartDummyServerTest) {
 }  // namespace client
 }  // namespace curve
 
-const std::vector<std::string> clientConf {
-    std::string("mds.listen.addr=") + mdsMetaServerAddr,
+const std::vector<std::string> clientConf{
+    std::string("mds.listen.addr=") + std::string(mdsMetaServerAddr),
     std::string("global.logPath=./runlog/"),
     std::string("chunkserver.rpcTimeoutMS=1000"),
     std::string("chunkserver.opMaxRetry=3"),
@@ -2383,7 +2378,7 @@ const std::vector<std::string> clientConf {
     std::string("throttle.enable=true"),
 };
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     ::testing::InitGoogleTest(&argc, argv);
     ::testing::InitGoogleMock(&argc, argv);
 
@@ -2393,8 +2388,8 @@ int main(int argc, char* argv[]) {
 
     std::unique_ptr<curve::CurveCluster> cluster(new curve::CurveCluster());
 
-    cluster->PrepareConfig<curve::ClientConfigGenerator>(
-        configpath, clientConf);
+    cluster->PrepareConfig<curve::ClientConfigGenerator>(configpath,
+                                                         clientConf);
 
     return RUN_ALL_TESTS();
 }

@@ -21,6 +21,8 @@
  * Author: xuchaojie
  */
 
+#include <glog/logging.h>
+
 #include <string>
 #include <unordered_map>
 
@@ -49,13 +51,11 @@ static const struct fuse_lowlevel_ops curve_ll_oper = {
     release : FuseOpRelease,
     fsync : FuseOpFsync,
     opendir : FuseOpOpenDir,
-    // TODO(wuhongsong): readdirplus is problematic,
-    // resulting in inconsistent metadata
-    // #if FUSE_VERSION >= FUSE_MAKE_VERSION(3, 0)
-    // readdir : 0,
-    // #else
+    #if FUSE_VERSION >= FUSE_MAKE_VERSION(3, 0)
+    readdir : 0,
+    #else
     readdir : FuseOpReadDir,
-    // #endif
+    #endif
     releasedir : FuseOpReleaseDir,
     fsyncdir : 0,
     statfs : FuseOpStatFs,
@@ -79,11 +79,11 @@ static const struct fuse_lowlevel_ops curve_ll_oper = {
     flock : 0,
     fallocate : 0,
     #endif
-    // TODO(wuhongsong): The current implementation is problematic,
-    // resulting in inconsistent metadata
-    // #if FUSE_VERSION >= FUSE_MAKE_VERSION(3, 0)
+    #if FUSE_VERSION >= FUSE_MAKE_VERSION(3, 0)
+    readdirplus : FuseOpReadDirPlus,
+    #else
     readdirplus : 0,
-    // #endif
+    #endif
     #if FUSE_VERSION >= FUSE_MAKE_VERSION(3, 4)
     copy_file_range : 0,
     #endif
@@ -107,7 +107,7 @@ void extra_options_help() {
 
 std::string match_any_pattern(
     const std::unordered_map<std::string, char**>& patterns, const char* src) {
-    int src_len = strlen(src);
+    size_t src_len = strlen(src);
     for (const auto& pair : patterns) {
         const auto& pattern = pair.first;
         if (pattern.length() < src_len &&
@@ -220,18 +220,18 @@ int main(int argc, char *argv[]) {
 
     fuse_daemonize(opts.foreground);
 
-    if (InitGlog(mOpts.conf, argv[0]) < 0) {
-        printf("Init glog failed, confpath = %s\n", mOpts.conf);
+    if (InitLog(mOpts.conf, argv[0]) < 0) {
+        printf("Init log failed, confpath = %s\n", mOpts.conf);
     }
 
-    ret = InitFuseClient(mOpts.conf, mOpts.fsName, mOpts.fsType, mOpts.mdsAddr);
+    ret = InitFuseClient(&mOpts);
     if (ret < 0) {
-        printf("init fuse client fail, conf =%s\n", mOpts.conf);
+        LOG(ERROR) << "init fuse client fail, conf = " << mOpts.conf;
         goto err_out4;
     }
 
-    printf("fuse start loop, singlethread = %d, max_idle_threads = %d\n",
-        opts.singlethread, opts.max_idle_threads);
+    LOG(INFO) << "fuse start loop, singlethread = " << opts.singlethread
+              << ", max_idle_threads = " << opts.max_idle_threads;
 
     /* Block until ctrl+c or fusermount -u */
     if (opts.singlethread) {

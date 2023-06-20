@@ -30,6 +30,7 @@ import (
 	"github.com/opencurve/curve/tools-v2/proto/curvefs/proto/topology"
 	"github.com/opencurve/curve/tools-v2/proto/proto/copyset"
 	"github.com/opencurve/curve/tools-v2/proto/proto/nameserver2"
+	"github.com/opencurve/curve/tools-v2/proto/proto/topology/statuscode"
 	bs_topo_statuscode "github.com/opencurve/curve/tools-v2/proto/proto/topology/statuscode"
 )
 
@@ -187,9 +188,9 @@ func MostImportantCmdError(err []*CmdError) *CmdError {
 
 // keep the most important wrong id, all wrong message will be kept
 // if all success return success
-func MergeCmdErrorExceptSuccess(err []*CmdError) CmdError {
+func MergeCmdErrorExceptSuccess(err []*CmdError) *CmdError {
 	if len(err) == 0 {
-		return *NewSucessCmdError()
+		return NewSucessCmdError()
 	}
 	var ret CmdError
 	ret.Code = CODE_UNKNOWN
@@ -207,31 +208,31 @@ func MergeCmdErrorExceptSuccess(err []*CmdError) CmdError {
 		}
 	}
 	if countSuccess == len(err) {
-		return *NewSucessCmdError()
+		return NewSucessCmdError()
 	}
 	ret.Message = ret.Message[:len(ret.Message)-1]
-	return ret
+	return &ret
 }
 
 // keep the most important wrong id, all wrong message will be kept
 // if have one success return success
-func MergeCmdError(err []*CmdError) CmdError {
+func MergeCmdError(err []*CmdError) *CmdError {
 	if len(err) == 0 {
-		return *NewSucessCmdError()
+		return NewSucessCmdError()
 	}
 	var ret CmdError
 	ret.Code = CODE_UNKNOWN
 	ret.Message = ""
 	for _, e := range err {
 		if e.Code == CODE_SUCCESS {
-			return *e
+			return e
 		} else if e.Code < ret.Code {
 			ret.Code = e.Code
 		}
 		ret.Message = e.Message + "\n" + ret.Message
 	}
 	ret.Message = ret.Message[:len(ret.Message)-1]
-	return ret
+	return &ret
 }
 
 var (
@@ -388,6 +389,75 @@ var (
 	}
 	ErrQueryWarmup = func() *CmdError {
 		return NewInternalCmdError(43, "query warmup progress fail, err: %s")
+	}
+	ErrBsGetSegment = func() *CmdError {
+		return NewInternalCmdError(44, "get segments fail, err: %s")
+	}
+	ErrBsGetChunkCopyset = func() *CmdError {
+		return NewInternalCmdError(45, "get copyset of chunk fail, err: %s")
+	}
+	ErrBsChunkServerListInCopySets = func() *CmdError {
+		return NewInternalCmdError(46, "get chunkserver list in copysets fail, err: %s")
+	}
+	ErrBsUnknownFileType = func() *CmdError {
+		return NewInternalCmdError(47, "unknown file type[%s], only support: dir, file")
+	}
+	ErrBsCreateFileOrDirectoryType = func() *CmdError {
+		return NewInternalCmdError(48, "create file or directory fail, err: %s")
+	}
+	ErrBsListLogicalPoolInfo = func() *CmdError {
+		return NewInternalCmdError(49, "list logical pool info fail, the error is: %s")
+	}
+	ErrBsUnknownThrottleType = func() *CmdError {
+		return NewInternalCmdError(50, "unknown throttle type[%s], only support: iops_total|iops_read|iops_write|bps_total|bps_read|bps_write")
+	}
+	ErrBsListDir = func() *CmdError {
+		return NewInternalCmdError(51, "list directory fail, err: %s")
+	}
+	ErrBsGetCopysetStatus = func() *CmdError {
+		return NewInternalCmdError(52, "get copyset status fail, err: %s")
+	}
+	ErrBsOpNameNotSupport = func() *CmdError {
+		return NewInternalCmdError(53, "not support op[%s], only support: operator, change_peer, add_peer, remove_peer, transfer_leader")
+	}
+	ErrBsGetClientList = func() *CmdError {
+		return NewInternalCmdError(54, "get client list fail, err: %s")
+	}
+	ErrBsGetClientStatus = func() *CmdError {
+		return NewInternalCmdError(55, "get client status fail, err: %s")
+	}
+	ErrBsGetEtcdStatus = func() *CmdError {
+		return NewInternalCmdError(56, "get etcd status fail, err: %s")
+	}
+	ErrBsGetMdsStatus = func() *CmdError {
+		return NewInternalCmdError(57, "get mds status fail, err: %s")
+	}
+	ErrBsGetSnapshotServerStatus = func() *CmdError {
+		return NewInternalCmdError(58, "get snapshotserver status fail, err: %s")
+	}
+	ErrBsGetChunkServerInCluster = func() *CmdError {
+		return NewInternalCmdError(59, "get chunkserver in cluster fail, err: %s")
+	}
+	ErrBsQueryChunkServerRecoverStatus = func() *CmdError {
+		return NewInternalCmdError(60, "query chunkserver recover status fail, err: %s")
+	}
+	ErrBsListChunkServer = func() *CmdError {
+		return NewInternalCmdError(61, "list chunkserver fail, err: %s")
+	}
+	ErrBsGetChunkInfo = func() *CmdError {
+		return NewInternalCmdError(62, "get chunk info fail, err: %s")
+	}
+	ErrBsGetUnavailCopysets = func() *CmdError {
+		return NewInternalCmdError(63, "get unavail copysets fail, err: %s")
+	}
+	ErrBsGetScanStatus = func() *CmdError {
+		return NewInternalCmdError(64, "query scan-status fail, err: %s")
+	}
+	ErrBsListScanStatus = func() *CmdError {
+		return NewInternalCmdError(65, "list scan-status fail, err: %s")
+	}
+	ErrBsListOfflineChunkServer = func() *CmdError {
+		return NewInternalCmdError(66, "list offline chunkserver fail, err: %s")
 	}
 
 	// http error
@@ -602,6 +672,10 @@ var (
 		message := fmt.Sprintf("Rpc[ListPoolZone] faild status code: %s", statuscode.String())
 		return NewInternalCmdError(int(statuscode), message)
 	}
+	ErrBsSetCopysetAvailFlagRpc = func(statuscode bs_topo_statuscode.TopoStatusCode) *CmdError {
+		message := fmt.Sprintf("Rpc[SetCopysetAvailFlag] faild status code: %s", statuscode.String())
+		return NewInternalCmdError(int(statuscode), message)
+	}
 
 	// bs
 	ErrCreateBsTopology = func(statusCode bs_topo_statuscode.TopoStatusCode, topoType string, name string) *CmdError {
@@ -684,5 +758,121 @@ var (
 			message = fmt.Sprintf("delete %s[%s], err: %s", topoType, name, statusCode.String())
 		}
 		return NewRpcReultCmdError(-code, message)
+	}
+
+	ErrGetOrAllocateSegment = func(statusCode nameserver2.StatusCode, file string, offset uint64) *CmdError {
+		var message string
+		code := int(statusCode)
+		switch statusCode {
+		case nameserver2.StatusCode_kOK:
+			message = "getOrAllocateSegment  successfully"
+		default:
+			message = fmt.Sprintf("getOrAllocateSegment file[%s] offset[%d], err: %s", file, offset, statusCode.String())
+		}
+		return NewRpcReultCmdError(code, message)
+	}
+
+	ErrGetChunkServerListInCopySets = func(statusCode statuscode.TopoStatusCode, logicalPool uint32, copysetIds []uint32) *CmdError {
+		var message string
+		code := int(statusCode)
+		switch statusCode {
+		case statuscode.TopoStatusCode_Success:
+			message = "getChunkServerListInCopySets successfully"
+		default:
+			message = fmt.Sprintf("getChunkServerListInCopySets logicalPool[%d] copysets%v, err: %s", logicalPool, copysetIds, statusCode.String())
+		}
+		return NewRpcReultCmdError(-code, message)
+	}
+
+	ErrExtendFile = func(statusCode nameserver2.StatusCode, path, size string) *CmdError {
+		var message string
+		code := int(statusCode)
+		switch statusCode {
+		case nameserver2.StatusCode_kOK:
+			message = "successfully expanded the file"
+		default:
+			message = fmt.Sprintf("failed to expand file[%s] to %s, err: %s", path, size, statusCode.String())
+		}
+		return NewRpcReultCmdError(code, message)
+	}
+	ErrCreateFile = func(statusCode nameserver2.StatusCode, path string) *CmdError {
+		var message string
+		code := int(statusCode)
+		switch statusCode {
+		case nameserver2.StatusCode_kOK:
+			message = "Created successfully"
+		default:
+			message = fmt.Sprintf("failed to create file[%s], err: %s", path, statusCode.String())
+		}
+		return NewRpcReultCmdError(code, message)
+	}
+	ErrUpdateFileThrottle = func(statusCode nameserver2.StatusCode, path string) *CmdError {
+		var message string
+		code := int(statusCode)
+		switch statusCode {
+		case nameserver2.StatusCode_kOK:
+			message = "successfully update the file throttle"
+		default:
+			message = fmt.Sprintf("failed to update file[%s] throttle, err: %s", path, statusCode.String())
+		}
+		return NewRpcReultCmdError(code, message)
+	}
+	ErrBsGetCopyset = func(statusCode statuscode.TopoStatusCode, logicalpoolid, copysetid uint32) *CmdError {
+		var message string
+		code := int(statusCode)
+		switch statusCode {
+		case statuscode.TopoStatusCode_Success:
+			message = "success"
+		default:
+			message = fmt.Sprintf("rpc get copyset(id: %d,logicalPoolid: %d) info fail, err: %s", copysetid, logicalpoolid, statusCode.String())
+		}
+		return NewRpcReultCmdError(code, message)
+	}
+	ErrBsGetChunkServerInClusterRpc = func(statusCode statuscode.TopoStatusCode) *CmdError {
+		var message string
+		code := int(statusCode)
+		switch statusCode {
+		case statuscode.TopoStatusCode_Success:
+			message = "success"
+		default:
+			message = fmt.Sprintf("Rpc[GetChunkServerInCluster] fail, err: %s", statusCode.String())
+		}
+		return NewRpcReultCmdError(code, message)
+	}
+	ErrBsQueryChunkserverRecoverStatus = func(statusCode statuscode.TopoStatusCode) *CmdError {
+		var message string
+		code := int(statusCode)
+		switch statusCode {
+		case statuscode.TopoStatusCode_Success:
+			message = "success"
+		default:
+			message = fmt.Sprintf("Rpc[QueryChunkserverRecoverStatus] fail, err: %s", statusCode.String())
+		}
+		return NewRpcReultCmdError(code, message)
+	}
+	ErrBsCreateSnapShot = func(statusCode nameserver2.StatusCode, path string) *CmdError {
+		var message string
+		code := int(statusCode)
+		switch statusCode {
+		case nameserver2.StatusCode_kOK:
+			message = "Create snapshot successfully"
+		default:
+			message = fmt.Sprintf("failed to snapshot from [%s], err: %s", path, statusCode.String())
+		}
+		return NewRpcReultCmdError(code, message)
+	}
+	ErrBsListSnapShot = func() *CmdError {
+		return NewInternalCmdError(666, "list snapshot fail, err: %s")
+	}
+	ErrBsClone = func(statusCode nameserver2.StatusCode, path string) *CmdError {
+		var message string
+		code := int(statusCode)
+		switch statusCode {
+		case nameserver2.StatusCode_kOK:
+			message = "Clone successfully"
+		default:
+			message = fmt.Sprintf("failed to clone from [%s], err: %s", path, statusCode.String())
+		}
+		return NewRpcReultCmdError(code, message)
 	}
 )

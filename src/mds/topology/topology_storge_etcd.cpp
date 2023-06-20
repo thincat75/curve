@@ -31,6 +31,42 @@ namespace curve {
 namespace mds {
 namespace topology {
 
+bool TopologyStorageEtcd::LoadPoolset(
+        std::unordered_map<PoolsetIdType, Poolset>* poolsetMap,
+        PoolsetIdType* maxPoolsetId) {
+    std::vector<std::string> out;
+    poolsetMap->clear();
+    *maxPoolsetId = 0;
+    int errCode = client_->List(POOLSETKEYPREFIX, POOLSETKEYEND, &out);
+    if (errCode == EtcdErrCode::EtcdKeyNotExist) {
+        return true;
+    }
+    if (errCode != EtcdErrCode::EtcdOK) {
+        LOG(ERROR) << "etcd list err:" << errCode;
+        return false;
+    }
+    for (size_t i = 0; i < out.size(); i++) {
+        Poolset data;
+        errCode = codec_->DecodePoolsetData(out[i], &data);
+        if (!errCode) {
+            LOG(ERROR) << "DecodePoolsetData err";
+            return false;
+        }
+        PoolsetIdType id = data.GetId();
+        auto ret = poolsetMap->emplace(id, std::move(data));
+        if (!ret.second) {
+            LOG(ERROR) << "LoadPoolset: "
+                        << "PoolsetId duplicated, PoolsetId = "
+                        << id;
+            return false;
+        }
+        if (*maxPoolsetId < id) {
+            *maxPoolsetId = id;
+        }
+    }
+    return true;
+}
+
 bool TopologyStorageEtcd::LoadLogicalPool(
     std::unordered_map<PoolIdType, LogicalPool> *logicalPoolMap,
     PoolIdType *maxLogicalPoolId) {
@@ -45,7 +81,7 @@ bool TopologyStorageEtcd::LoadLogicalPool(
         LOG(ERROR) << "etcd list err:" << errCode;
         return false;
     }
-    for (int i = 0; i < out.size(); i++) {
+    for (size_t i = 0; i < out.size(); i++) {
         LogicalPool data;
         errCode = codec_->DecodeLogicalPoolData(out[i], &data);
         if (!errCode) {
@@ -82,7 +118,7 @@ bool TopologyStorageEtcd::LoadPhysicalPool(
         LOG(ERROR) << "etcd list err:" << errCode;
         return false;
     }
-    for (int i = 0; i < out.size(); i++) {
+    for (size_t i = 0; i < out.size(); i++) {
         PhysicalPool data;
         errCode = codec_->DecodePhysicalPoolData(out[i], &data);
         if (!errCode) {
@@ -118,7 +154,7 @@ bool TopologyStorageEtcd::LoadZone(
         LOG(ERROR) << "etcd list err:" << errCode;
         return false;
     }
-    for (int i = 0; i < out.size(); i++) {
+    for (size_t i = 0; i < out.size(); i++) {
         Zone data;
         errCode = codec_->DecodeZoneData(out[i], &data);
         if (!errCode) {
@@ -154,7 +190,7 @@ bool TopologyStorageEtcd::LoadServer(
         LOG(ERROR) << "etcd list err:" << errCode;
         return false;
     }
-    for (int i = 0; i < out.size(); i++) {
+    for (size_t i = 0; i < out.size(); i++) {
         Server data;
         errCode = codec_->DecodeServerData(out[i], &data);
         if (!errCode) {
@@ -190,7 +226,7 @@ bool TopologyStorageEtcd::LoadChunkServer(
         LOG(ERROR) << "etcd list err:" << errCode;
         return false;
     }
-    for (int i = 0; i < out.size(); i++) {
+    for (size_t i = 0; i < out.size(); i++) {
         ChunkServer data;
         errCode = codec_->DecodeChunkServerData(out[i], &data);
         if (!errCode) {
@@ -228,7 +264,7 @@ bool TopologyStorageEtcd::LoadCopySet(
         LOG(ERROR) << "etcd list err:" << errCode;
         return false;
     }
-    for (int i = 0; i < out.size(); i++) {
+    for (size_t i = 0; i < out.size(); i++) {
         CopySetInfo data;
         errCode = codec_->DecodeCopySetData(out[i], &data);
         if (!errCode) {
@@ -250,6 +286,25 @@ bool TopologyStorageEtcd::LoadCopySet(
         if ((*copySetIdMaxMap)[lpid] < id) {
             (*copySetIdMaxMap)[lpid] = id;
         }
+    }
+    return true;
+}
+
+bool TopologyStorageEtcd::StoragePoolset(const Poolset &data) {
+    std::string key = codec_->EncodePoolsetKey(data.GetId());
+    std::string value;
+    bool ret = codec_->EncodePoolsetData(data, &value);
+    if (!ret) {
+        LOG(ERROR) << "EncodePoolsetData err"
+                   << ", poolsetId = " << data.GetId();
+        return false;
+    }
+    int errCode = client_->Put(key, value);
+    if (errCode != EtcdErrCode::EtcdOK) {
+        LOG(ERROR) << "Put Poolset into etcd err"
+                   << ", errcode = " << errCode
+                   << ", poolsetId = " << data.GetId();
+        return false;
     }
     return true;
 }
@@ -366,6 +421,18 @@ bool TopologyStorageEtcd::StorageCopySet(const CopySetInfo &data) {
                    << ", errcode = " << errCode
                    << ", logicalPoolId = " << data.GetLogicalPoolId()
                    << ", copysetId = " << data.GetId();
+        return false;
+    }
+    return true;
+}
+
+bool TopologyStorageEtcd::DeletePoolset(PoolsetIdType id) {
+    std::string key = codec_->EncodePoolsetKey(id);
+    int errCode = client_->Delete(key);
+    if (errCode != EtcdErrCode::EtcdOK) {
+        LOG(ERROR) << "delete Poolset from etcd err"
+                   << ", errcode = " << errCode
+                   << ", poolsetId = " << id;
         return false;
     }
     return true;
@@ -510,4 +577,3 @@ bool TopologyStorageEtcd::StorageClusterInfo(const ClusterInformation &info) {
 }  // namespace topology
 }  // namespace mds
 }  // namespace curve
-

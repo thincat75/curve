@@ -45,16 +45,19 @@ class DataCacheTest : public testing::Test {
         S3ClientAdaptorOption option;
         option.blockSize = 1 * 1024 * 1024;
         option.chunkSize = 4 * 1024 * 1024;
+        option.baseSleepUs = 500;
+        option.objectPrefix = 0;
         option.pageSize = 64 * 1024;
         option.intervalSec = 5000;
         option.flushIntervalSec = 5000;
         option.readCacheMaxByte = 104857600;
+        option.readCacheThreads = 5;
         option.diskCacheOpt.diskCacheType = (DiskCacheType)0;
         option.chunkFlushThreads = 5;
         s3ClientAdaptor_ = new S3ClientAdaptorImpl();
         auto fsCacheManager = std::make_shared<FsCacheManager>(
-            s3ClientAdaptor_, option.readCacheMaxByte,
-            option.writeCacheMaxByte, nullptr);
+            s3ClientAdaptor_, option.readCacheMaxByte, option.writeCacheMaxByte,
+            option.readCacheThreads, nullptr);
         s3ClientAdaptor_->Init(option, nullptr, nullptr, nullptr,
                                fsCacheManager, nullptr, nullptr);
         mockChunkCacheManager_ = std::make_shared<MockChunkCacheManager>();

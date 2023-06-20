@@ -47,15 +47,39 @@ A tool for CurveFS & CurveBs.
         - [list server](#list-server)
         - [list client](#list-client)
         - [list dir](#list-dir)
+        - [list space](#list-space)
+        - [list chunkserver](#list-chunkserver)
+        - [list scan-status](#list-scan-status)
+        - [list may-broken-vol](#list-may-broken-vol)
+    - [clean-recycle](#clean-recycle)
     - [query](#query-1)
         - [query file](#query-file)
+        - [query chunk](#query-chunk)
+        - [query segment](#query-segment)
+        - [query scan-status](#query-scan-status)
     - [status](#status-1)
-      - [staus etcd](#staus-etcd)
-      - [staus mds](#staus-mds)
+      - [status etcd](#status-etcd-1)
+      - [status mds](#status-mds-1)
+      - [status client](#status-client)
+      - [status snapshotserver](#status-snapshotserver)
+      - [status chunkserver](#status-chunkserver)
+      - [status copyset](#status-copyset-1)
     - [delete](#delete-1)
       - [delete peer](#delete-peer)
     - [update](#update)
       - [update peer](#update-peer)
+      - [update leader](#update-leader)
+      - [update file](#update-file)
+      - [update throttle](#update-throttle)
+      - [update scan-state](#update-scan-state)
+      - [update copyset availflag](#update-copyset-availflag)
+    - [create](#create-1)
+      - [create file](#create-file)
+      - [create dir](#create-dir)
+    - [check](#check-1)
+      - [check copyset](#check-copyset-1)
+    - [snapshot](#snapshot)
+      - [snapshot copyset](#snapshot-copyset)
   - [Comparison of old and new commands](#comparison-of-old-and-new-commands)
     - [curve fs](#curve-fs)
     - [curve bs](#curve-bs)
@@ -87,7 +111,13 @@ wget https://curve-tool.nos-eastchina1.126.net/config/curve.yaml
 Please modify the `mdsAddr, mdsDummyAddr, etcdAddr` under `curvefs/bs` in the template.yaml file as required
 
 ```bash
-mv template.yaml ~/.curve/curve.yaml
+mv curve.yaml ~/.curve/curve.yaml
+```
+
+or
+
+```bash
+mv curve.yaml /etc/curve/curve.yaml
 ```
 
 ### Introduction
@@ -884,6 +914,304 @@ Output:
 +------+-------------+----------+-----------------+------------+---------------------+---------------+-------------+
 ```
 
+##### list space
+
+show curvebs all disk type space, include total space and used space
+
+```bash
+curve bs list space
+```
+
+Output:
+
+```bash
++----------+---------+---------+---------+------------+---------+
+|   TYPE   | TOTAL   |  USED   |  LEFT   | RECYCLABLE | CREATED |
++----------+---------+---------+---------+------------+---------+
+| physical | *** GiB | *** GiB | *** GiB | -          | -       |
++----------+---------+---------+---------+------------+---------+
+| logical  | *** GiB | *** GiB | *** GiB | *** GiB    | *** GiB |
++----------+---------+---------+---------+------------+---------+
+```
+
+##### list chunkserver
+
+list chunkserver information in curvebs
+
+```bash
+curve bs list chunkserver
+```
+
+Output:
+
+```bash        
++----+------+-----------+------+-----------+------------+------------+-----------------------------------------------+--------------+-------------+------------------+-----------+
+| ID | TYPE |    IP     | PORT | RWSTATUS  | DISKSTATE  | COPYSETNUM |                  MOUNTPOINT                   | DISKCAPACITY |  DISKUSED   | UNHEALTHYCOPYSET |  EXTADDR  |
++----+------+-----------+------+-----------+------------+------------+-----------------------------------------------+--------------+-------------+------------------+-----------+
+| 1  | nvme | 127.0.0.1 | 8201 | READWRITE | DISKNORMAL | 100        | local:///curvebs/playground/chunkserver1/data | 39 GiB       | 42140479488 | 0 %              | 127.0.0.1 |
++----+      +           +------+           +            +------------+-----------------------------------------------+--------------+-------------+------------------+           +
+| 2  |      |           | 8202 |           |            | 100        | local:///curvebs/playground/chunkserver2/data | 39 GiB       | 42140479488 | 0 %              |           |
++----+      +           +------+           +            +------------+-----------------------------------------------+--------------+-------------+------------------+           +
+| 3  |      |           | 8200 |           |            | 100        | local:///curvebs/playground/chunkserver0/data | 39 GiB       | 42140479488 | 0 %              |           |
++----+------+-----------+------+-----------+------------+------------+-----------------------------------------------+--------------+-------------+------------------+-----------+
+```
+
+##### list scan-status
+
+list curvebs all copyset that scanning is false
+
+```bash
+curve bs list scan-status
+```
+
+Output:
+
+```bash
++-------------+-----------+
+| LOGICALPOOL | COPYSETID |
++-------------+-----------+
+| 1           | 1         |
++-------------+-----------+
+| 1           | 10        |
++-------------+-----------+
+| 1           | 100       |
++-------------+-----------+
+| 1           | 11        |
++-------------+-----------+
+| 1           | 12        |
++-------------+-----------+
+| 1           | 13        |
++-------------+-----------+
+| 1           | 14        |
++-------------+-----------+
+| 1           | 15        |
++-------------+-----------+
+| 1           | 16        |
++-------------+-----------+
+| 1           | 17        |
++-------------+-----------+
+| 1           | 18        |
++-------------+-----------+
+| 1           | 19        |
++-------------+-----------+
+| 1           | 2         |
++-------------+-----------+
+| 1           | 20        |
++-------------+-----------+
+| 1           | 21        |
++-------------+-----------+
+| 1           | 22        |
++-------------+-----------+
+| 1           | 23        |
++-------------+-----------+
+| 1           | 24        |
++-------------+-----------+
+| 1           | 25        |
++-------------+-----------+
+| 1           | 26        |
++-------------+-----------+
+| 1           | 27        |
++-------------+-----------+
+| 1           | 28        |
++-------------+-----------+
+| 1           | 29        |
++-------------+-----------+
+| 1           | 3         |
++-------------+-----------+
+| 1           | 30        |
++-------------+-----------+
+| 1           | 31        |
++-------------+-----------+
+| 1           | 32        |
++-------------+-----------+
+| 1           | 33        |
++-------------+-----------+
+| 1           | 34        |
++-------------+-----------+
+| 1           | 35        |
++-------------+-----------+
+| 1           | 36        |
++-------------+-----------+
+| 1           | 37        |
++-------------+-----------+
+| 1           | 38        |
++-------------+-----------+
+| 1           | 39        |
++-------------+-----------+
+| 1           | 4         |
++-------------+-----------+
+| 1           | 40        |
++-------------+-----------+
+| 1           | 41        |
++-------------+-----------+
+| 1           | 42        |
++-------------+-----------+
+| 1           | 43        |
++-------------+-----------+
+| 1           | 44        |
++-------------+-----------+
+| 1           | 45        |
++-------------+-----------+
+| 1           | 46        |
++-------------+-----------+
+| 1           | 47        |
++-------------+-----------+
+| 1           | 48        |
++-------------+-----------+
+| 1           | 49        |
++-------------+-----------+
+| 1           | 5         |
++-------------+-----------+
+| 1           | 50        |
++-------------+-----------+
+| 1           | 51        |
++-------------+-----------+
+| 1           | 52        |
++-------------+-----------+
+| 1           | 53        |
++-------------+-----------+
+| 1           | 54        |
++-------------+-----------+
+| 1           | 55        |
++-------------+-----------+
+| 1           | 56        |
++-------------+-----------+
+| 1           | 57        |
++-------------+-----------+
+| 1           | 58        |
++-------------+-----------+
+| 1           | 59        |
++-------------+-----------+
+| 1           | 6         |
++-------------+-----------+
+| 1           | 60        |
++-------------+-----------+
+| 1           | 61        |
++-------------+-----------+
+| 1           | 62        |
++-------------+-----------+
+| 1           | 63        |
++-------------+-----------+
+| 1           | 64        |
++-------------+-----------+
+| 1           | 65        |
++-------------+-----------+
+| 1           | 66        |
++-------------+-----------+
+| 1           | 67        |
++-------------+-----------+
+| 1           | 68        |
++-------------+-----------+
+| 1           | 69        |
++-------------+-----------+
+| 1           | 7         |
++-------------+-----------+
+| 1           | 70        |
++-------------+-----------+
+| 1           | 71        |
++-------------+-----------+
+| 1           | 72        |
++-------------+-----------+
+| 1           | 73        |
++-------------+-----------+
+| 1           | 74        |
++-------------+-----------+
+| 1           | 75        |
++-------------+-----------+
+| 1           | 76        |
++-------------+-----------+
+| 1           | 77        |
++-------------+-----------+
+| 1           | 78        |
++-------------+-----------+
+| 1           | 79        |
++-------------+-----------+
+| 1           | 8         |
++-------------+-----------+
+| 1           | 80        |
++-------------+-----------+
+| 1           | 81        |
++-------------+-----------+
+| 1           | 82        |
++-------------+-----------+
+| 1           | 83        |
++-------------+-----------+
+| 1           | 84        |
++-------------+-----------+
+| 1           | 85        |
++-------------+-----------+
+| 1           | 86        |
++-------------+-----------+
+| 1           | 87        |
++-------------+-----------+
+| 1           | 88        |
++-------------+-----------+
+| 1           | 89        |
++-------------+-----------+
+| 1           | 9         |
++-------------+-----------+
+| 1           | 90        |
++-------------+-----------+
+| 1           | 91        |
++-------------+-----------+
+| 1           | 92        |
++-------------+-----------+
+| 1           | 93        |
++-------------+-----------+
+| 1           | 94        |
++-------------+-----------+
+| 1           | 95        |
++-------------+-----------+
+| 1           | 96        |
++-------------+-----------+
+| 1           | 97        |
++-------------+-----------+
+| 1           | 98        |
++-------------+-----------+
+| 1           | 99        |
++-------------+-----------+
+```
+
+##### list may-broken-vol
+
+list may broken volumes
+
+Usage:
+
+```bash
+curve bs list may-broken-vol
+```
+
+Output:
+
+```bash
++----------+
+| FILENAME | 
++----------+
+|   test   |        
++----------+
+```
+
+### clean-recycle
+
+clean the recycle bin 
+
+Usage:
+
+```bash
+curve bs clean-recycle --recycleprefix=/test --expiredtime=1h
+```
+
+Output:
+
+```bash
++---------+
+| RESULT  | 
++---------+
+| success |        
++---------+
+```
+
 ### query
 
 ##### query file
@@ -909,11 +1237,77 @@ Output:
 +------+------+----------------+-------+--------+---------+--------+-----+---------------------+--------------+---------+-----------------+----------+
 ```
 
+##### query chunk
+
+query the location of the chunk corresponding to the offset
+
+Usage:
+
+```bash
+curve bs query chunk --path /test1 --offset 1008600000 
+```
+
+Output:
+
+```bash
++-------+-------------+---------+------------+----------------------+
+| CHUNK | LOGICALPOOL | COPYSET |   GROUP    |       LOCATION       |
++-------+-------------+---------+------------+----------------------+
+| 61    | 1           | 61      | 4294967357 | ***.***.***.***:**** |
+|       |             |         |            | ***.***.***.***:**** |
+|       |             |         |            | ***.***.***.***:**** |
++-------+-------------+---------+------------+----------------------+
+```
+
+##### query segment
+
+query the segments info of the file
+
+Usage:
+
+```bash
+curve bs query seginfo --path /test1 
+```
+
+Output:
+
+```bash
++-------------+-------------+-----------+------------+---------+-------+
+| LOGICALPOOL | SEGMENTSIZE | CHUNKSIZE |   START    | COPYSET | CHUNK |
++-------------+-------------+-----------+------------+---------+-------+
+| 1           | 1073741824  | 16777216  | 0          | 1       | 1     |
++             +             +           +            +---------+-------+
+|                        ......                                        |
++             +             +           +------------+---------+-------+
+|             |             |           | 9663676416 | 1       | 101   |
++             +             +           +            +---------+-------+
+|                        ......                                        |
++             +             +           +            +---------+-------+
+|             |             |           |            | 99      | 99    |
++-------------+-------------+-----------+------------+---------+-------+
+```
+
+##### query scan-status
+quey ScanStatus Info in bs
+
+Usage:
+```bash
+curve bs query scan-satus --copysetid 1 --logicalpoolid 1
+```
+
+Output:
+```bash
++-------------+-----------+-------+-------------+--------------------+
+| LOGICALPOOL | COPYSETID | SCAN  | LASTSCANSEC | LASTSCANCONSISTENT |
++-------------+-----------+-------+-------------+--------------------+
+| 1           | 1         | false | 1684425801  | true               |
++-------------+-----------+-------+-------------+--------------------+
+```
+
 ### status
 
-#### staus etcd
-
-get the etcd status of curvefs
+#### status etcd
+get the etcd status of curvebs
 
 Usage:
 
@@ -935,9 +1329,9 @@ Output:
 +---------------------+---------+----------+
 ```
 
-#### staus mds
+#### status mds
 
-get the mds status of curvefs
+get the mds status of curvebs
 
 Usage:
 
@@ -957,6 +1351,100 @@ Output:
 +-------------------+-------------------+                   +----------+
 | **.***.**.**:**** | **.***.**.**:**** |                   | leader   |
 +-------------------+-------------------+-------------------+----------+
+```
+
+#### status client
+
+get the client status of curvebs
+
+Usage:
+
+```bash
+curve bs status client
+```
+
+Output:
+
+```bash
++-------------+----------------+---------------------+-----+
+|    TYPE     |    VERSION     |        ADDR         | NUM |
++-------------+----------------+---------------------+-----+
+| nebd-server | 9.9.9+2c4861ca | ***.***.**.***:**** | 2   |
++             +                +---------------------+     +
+|             |                | ***.***.**.***:**** |     |
++-------------+----------------+---------------------+-----+
+```
+
+#### status snapshotserver
+
+get the mds status of curvebs
+
+Usage:
+
+```bash
+curve bs status snapshotserver
+```
+
+Output:
+
+```bash
++---------------------+---------------------+-------------------+----------+
+|        ADDR         |      DUMMYADDR      |    VERSION        |  STATUS  |
++---------------------+---------------------+-------------------+----------+
+| ***.***.**.***:**** | ***.***.**.***:**** | ci+562296c7+debug | follower |
++---------------------+---------------------+                   +          +
+| ***.***.**.***:**** | ***.***.**.***:**** |                   |          |
++---------------------+---------------------+                   +----------+
+| ***.***.**.***:**** | ***.***.**.***:**** |                   | leader   |
++---------------------+---------------------+-------------------+----------+
+```
+
+#### status chunkserver
+
+get the chunkserver status of curvebs
+
+Usage:
+
+```bash
+curve bs status chunkserver
+```
+
+Output:
+
+```bash
++------------------+------------------+----------------+--------+------------+
+|   EXTERNALADDR   |   INTERNALADDR   |    VERSION     | STATUS | RECOVERING |
++------------------+------------------+----------------+--------+------------+
+| **************** | **************** | d9b6bb98+debug | online | false      |
++------------------+------------------+                +        +            +
+| **************** | **************** |                |        |            |
++------------------+------------------+                +        +            +
+| **************** | **************** |                |        |            |
++------------------+------------------+----------------+--------+------------+
+```
+
+#### status copyset
+
+get the copyset status of curvebs
+
+Usage:
+
+```bash
+curve bs status copyset
+```
+
+Output:
+
+```bash
++------------+-----------+--------+--------+--------+---------+
+| COPYSETKEY | COPYSETID | POOLID | STATUS | LOGGAP | EXPLAIN |
++------------+-----------+--------+--------+--------+---------+
+| 4294967297 | 1         | 1      | ok     | 0      |         |
++------------+-----------+        +        +--------+---------+
+| ......     |  ......   | ...... | ...... | ...... | ......  |
++------------+-----------+        +        +--------+---------+
+| 4294967395 | 99        |        |        | 0      |         |
++------------+-----------+--------+--------+--------+---------+
 ```
 
 ### delete
@@ -979,8 +1467,6 @@ Output:
 +------------------+------------------+---------+---------+--------+
 | 127.0.0.1:8201:0 | 127.0.0.1:8202:0 | (1:29)  | success | null   |
 +------------------+------------------+---------+---------+--------+
-
-
 ```
 
 ### update
@@ -1003,71 +1489,240 @@ Output:
 +----------------------+---------+---------+--------+
 ```
 
+#### update leader
+
+transfer leader
+
+Usage:
+```bash
+curve bs update leader 127.0.0.1:8202:0 --logicalpoolid=1 --copysetid=1 --peers=127.0.0.1:8200:0,127.0.0.1:8201:0,127.0.0.1:8202:0
+```
+
+Output:
+```
++-----------------------+-----------------------+---------+---------+
+|        LEADER         |       OLDLEADER       | COPYSET | RESULT  |
++-----------------------+-----------------------+---------+---------+
+| ***.***.**.***:****:* | ***.***.**.***:****:* | (1:1)   | success |
++-----------------------+-----------------------+---------+---------+
+```
+
+#### update file
+
+expand pagefile
+
+Usage:
+```bash
+curve bs update file --path /test2/test1 --size 10
+```
+
+Output:
+```
++---------+
+| RESULT  |
++---------+
+| success |
++---------+
+```
+
+#### update throttle
+
+update file throttle params
+
+Usage:
+```bash
+curve bs update throttle --path /test1 --type=bps_total --limit 20000
+```
+
+Output:
+```
++---------+
+| RESULT  |
++---------+
+| success |
++---------+
+```
+
+#### update scan-state
+
+enable/disable scan for logical pool
+
+Usage:
+```bash
+curve bs update scan-state --logicalpoolid 1 [--scan=true/false]
+```
+
+Output:
+```
++----+------+---------+--------+
+| ID | SCAN | RESULT  | REASON |
++----+------+---------+--------+
+| 1  | true | success | null   |
++----+------+---------+--------+
+```
+
+#### update copyset availflag
+
+update copyset availflag
+
+Usage:
+```bash
+curve bs update copyset availflag --availflag=true [--dryrun=true/false]
+```
+
+Output:
+```
++--------+-----------+---------------+--------+
+| POOLID | COPYSETID |   AVAILFLAG   | DRYRUN |
++--------+-----------+---------------+--------+
+| 1      | 1         | false => true | true   |
++--------+-----------+---------------+--------+
+```
+
+### create
+
+#### create file
+
+create pagefile
+
+Usage:
+```bash
+curve bs create file --path /test2/test4  --size 10GiB
+```
+
+Output:
+```
++---------+
+| RESULT  |
++---------+
+| success |
++---------+
+```
+
+#### create dir
+
+create directory
+
+Usage:
+```bash
+curve bs create dir --path /test2/test5 
+```
+
+Output:
+```
++---------+
+| RESULT  |
++---------+
+| success |
++---------+
+```
+
+### check
+
+#### check copyset
+
+check copysets health in curvebs
+
+Usage:
+
+```shell
+curve bs check copyset --copysetid 1 --logicalpoolid 1
+```
+
+Output:
+
+```shell
++------------+-----------+--------+--------+--------+---------+
+| COPYSETKEY | COPYSETID | POOLID | STATUS | LOGGAP | EXPLAIN |
++------------+-----------+--------+--------+--------+---------+
+| 4294967297 | 1         | 1      | ok     | 0      |         |
++------------+-----------+--------+--------+--------+---------+
+```
+
+### snapshot
+
+#### snapshot copyset
+
+take snapshot for copyset
+
+Usage:
+```bash
+curve bs snapshot copyset 127.0.0.0:8200:0 --logicalpoolid=1 --copysetid=1
+```
+
+Output:
+```
++-----------------------+---------+---------+
+|         PEER          | COPYSET | RESULT  |
++-----------------------+---------+---------+
+| ***.***.**.***:****:* | (**:**) | success |
++-----------------------+---------+---------+
+```
+
 ## Comparison of old and new commands
 
 ### curve fs
 
-|  old   | new  |
-|  ----  | ----  |
-| curvefs_tool check-copyset  | curve fs check copyset |
-| curvefs_tool create-fs  | curve fs create fs |
-| curvefs_tool create-topology  | curve fs create topology |
-| curvefs_tool delete-fs  | curve fs delete fs |
-| curvefs_tool list-copyset  | curve fs list copyset |
-| curvefs_tool list-fs  | curve fs list fs |
-| curvefs_tool list-fs  | curve fs list mountpoint |
-| curvefs_tool list-partition  | curve fs list partition |
-| curvefs_tool query-copyset  | curve fs query copyset |
-| curvefs_tool query-fs  | curve fs query fs |
-| curvefs_tool query-inode  | curve fs query inode |
-| curvefs_tool query-metaserver  | curve fs query metaserver |
-| curvefs_tool query-partition  | curve fs query partition |
-| curvefs_tool status-mds  | curve fs status mds |
-| curvefs_tool status-metaserver  | curve fs status metaserver |
-| curvefs_tool status-etcd  | curve fs status etcd |
-| curvefs_tool status-copyset  | curve fs status copyset |
-| curvefs_tool status-cluster  | curve fs status cluster |
-| curvefs_tool umount-fs  | curve fs umount fs |
-| curvefs_tool usage-inode  | curve fs usage inode |
-| curvefs_tool usage-metadata  | curve fs usage metadata |
+| old                            | new                        |
+| ------------------------------ | -------------------------- |
+| curvefs_tool check-copyset     | curve fs check copyset     |
+| curvefs_tool create-fs         | curve fs create fs         |
+| curvefs_tool create-topology   | curve fs create topology   |
+| curvefs_tool delete-fs         | curve fs delete fs         |
+| curvefs_tool list-copyset      | curve fs list copyset      |
+| curvefs_tool list-fs           | curve fs list fs           |
+| curvefs_tool list-fs           | curve fs list mountpoint   |
+| curvefs_tool list-partition    | curve fs list partition    |
+| curvefs_tool query-copyset     | curve fs query copyset     |
+| curvefs_tool query-fs          | curve fs query fs          |
+| curvefs_tool query-inode       | curve fs query inode       |
+| curvefs_tool query-metaserver  | curve fs query metaserver  |
+| curvefs_tool query-partition   | curve fs query partition   |
+| curvefs_tool status-mds        | curve fs status mds        |
+| curvefs_tool status-metaserver | curve fs status metaserver |
+| curvefs_tool status-etcd       | curve fs status etcd       |
+| curvefs_tool status-copyset    | curve fs status copyset    |
+| curvefs_tool status-cluster    | curve fs status cluster    |
+| curvefs_tool umount-fs         | curve fs umount fs         |
+| curvefs_tool usage-inode       | curve fs usage inode       |
+| curvefs_tool usage-metadata    | curve fs usage metadata    |
 
 ### curve bs
 
-|  old   | new  |
-|  ----  | ----  |
-| curve_ops_tool logical-pool-list | curve bs list logical-pool |
-| curve_ops_tool get -fileName= | curve bs query file -path |
-| curve_ops_tool etcd-status | curve bs status etcd |
-| curve_ops_tool mds-status | curve bs status mds |
-| curve_ops_tool server-list | curve bs list server |
-| space | |
-| status | |
-| chunkserver-status | |
-| client-status | |
-| curve_ops_tool client-list | curve bs list client |
-| snapshot-clone-status | |
-| copysets-status | |
-| chunkserver-list | |
-| cluster-status | |
-| curve_ops_tool list | curve bs list dir |
-| seginfo | |
-| curve_ops_tool delete | curve bs delete file |
-| clean-recycle | |
-| create | |
-| chunk-location | |
-| check-consistency | |
-| remove-peer | curve bs delete peer |
-| transfer-leader | |
-| reset-peer | curve bs update peer |
-| do-snapshot | |
-| do-snapshot-all | |
-| check-chunkserver | |
-| check-copyset | |
-| check-server | |
-| check-operator | |
-| list-may-broken-vol | |
-| set-copyset-availflag | |
-| update-throttle | |
-| rapid-leader-schedule | |
-| set-scan-state | |
-| scan-status | |
+| old                                  | new                               |
+| ------------------------------------ | --------------------------------- |
+| curve_ops_tool logical-pool-list     | curve bs list logical-pool        |
+| curve_ops_tool get -fileName=        | curve bs query file -path         |
+| curve_ops_tool etcd-status           | curve bs status etcd              |
+| curve_ops_tool mds-status            | curve bs status mds               |
+| curve_ops_tool server-list           | curve bs list server              |
+| curve_ops_tool client-list           | curve bs list client              |
+| curve_ops_tool delete                | curve bs delete file              |
+| curve_ops_tool list                  | curve bs list dir                 |
+| curve_ops_tool create                | curve bs create file/dir          |
+| curve_ops_tool seginfo               | curve bs query seginfo            |
+| curve_ops_tool chunk-location        | curve bs query chunk              |
+| curve_ops_tool remove-peer           | curve bs delete peer              |
+| curve_ops_tool reset-peer            | curve bs update peer              |
+| curve_ops_tool space                 | curve bs list space               |
+| curve_ops_tool update-throttle       | curve bs update throttle          |
+| curve_ops_tool check-copyset         | curve bs check copyset            |
+| curve_ops_tool client-status         | curve bs status client            |
+| curve_ops_tool check-operator        | curve bs check operator           |
+| curve_ops_tool snapshot-clone-status | curve bs status snapshotserver    |
+| curve_ops_tool transfer-leader       | curve bs update leader            |
+| curve_ops_tool do-snapshot           | curve bs snapshot copyset         |
+| curve_ops_tool set-scan-state        | curve bs update scan-state        |
+| curve_ops_tool chunkserver-status    | curve bs status chunkserver       |
+| curve_ops_tool chunkserver-list      | curve bs list chunkserver         |
+| curve_ops_tool set-copyset-availflag | curve bs update copyset availflag |
+| curve_ops_tool scan-status           | curve bs list/query scan-status   |
+| curve_ops_tool clean-recycle         | curve bs clean-recycle            |
+| curve_ops_tool copysets-status       | curve bs status copyset           |
+| curve_ops_tool list-may-broken-vol   | curve bs list may-broken-vol      |
+| curve_ops_tool status                |                                   |
+| curve_ops_tool check-consistency     |                                   |
+| curve_ops_tool do-snapshot-all       |                                   |
+| curve_ops_tool check-chunkserver     |                                   |
+| curve_ops_tool check-server          |                                   |
+| curve_ops_tool rapid-leader-schedule |                                   |

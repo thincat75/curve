@@ -131,21 +131,24 @@ class ClientS3IntegrationTest : public testing::Test {
         S3ClientAdaptorOption option;
         option.blockSize = 1 * 1024 * 1024;
         option.chunkSize = 4 * 1024 * 1024;
+        option.baseSleepUs = 500;
         option.pageSize = 64 * 1024;
         option.intervalSec = 5000;
         option.flushIntervalSec = 5000;
         option.readCacheMaxByte = 104857600;
         option.writeCacheMaxByte = 10485760000;
+        option.readCacheThreads = 5;
         option.diskCacheOpt.diskCacheType = (DiskCacheType)0;
         option.chunkFlushThreads = 5;
+        option.objectPrefix = 0;
         std::shared_ptr<MockInodeCacheManager> mockInodeManager(
             &mockInodeManager_);
         std::shared_ptr<MockMdsClient> mockMdsClient(&mockMdsClient_);
         std::shared_ptr<MockS3Client> mockS3Client(&mockS3Client_);
         s3ClientAdaptor_ = new S3ClientAdaptorImpl();
         auto fsCacheManager = std::make_shared<FsCacheManager>(
-            s3ClientAdaptor_, option.readCacheMaxByte,
-            option.writeCacheMaxByte, kvClientManager_);
+            s3ClientAdaptor_, option.readCacheMaxByte, option.writeCacheMaxByte,
+            option.readCacheThreads, kvClientManager_);
         s3ClientAdaptor_->Init(option, mockS3Client, mockInodeManager,
                                mockMdsClient, fsCacheManager, nullptr,
                                kvClientManager_);

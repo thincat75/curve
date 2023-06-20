@@ -158,10 +158,12 @@ func (cCmd *CopysetCommand) RunCommand(cmd *cobra.Command, args []string) error 
 		row[cobrautil.ROW_COPYSET_ID] = fmt.Sprintf("%d", copysetid)
 		if v == nil {
 			row[cobrautil.ROW_STATUS] = cobrautil.CopysetHealthStatus_Str[int32(cobrautil.COPYSET_NOTEXIST)]
+			(*cCmd.copysetKey2Status)[k] = cobrautil.COPYSET_NOTEXIST
 		} else {
 			status, errsCheck := cobrautil.CheckCopySetHealth(v)
 			copysetHealthCount[status]++
 			row[cobrautil.ROW_STATUS] = cobrautil.CopysetHealthStatus_Str[int32(status)]
+			(*cCmd.copysetKey2Status)[k] = status
 			explain := ""
 			if status != cobrautil.COPYSET_OK {
 				for i, e := range errsCheck {
@@ -177,6 +179,10 @@ func (cCmd *CopysetCommand) RunCommand(cmd *cobra.Command, args []string) error 
 			leaderInfo := (*cCmd.copysetKey2LeaderInfo)[k]
 			if leaderInfo == nil {
 				explain = "no leader peer"
+				if row[cobrautil.ROW_STATUS] == cobrautil.COPYSET_OK_STR {
+					row[cobrautil.ROW_STATUS] = cobrautil.COPYSET_ERROR_STR
+					copysetHealthCount[cobrautil.COPYSET_ERROR]++
+				}
 			} else if leaderInfo.Snapshot {
 				installSnapshot := "installing snapshot"
 				if len(explain) > 0 {
@@ -215,7 +221,7 @@ func (cCmd *CopysetCommand) RunCommand(cmd *cobra.Command, args []string) error 
 		cCmd.health = cobrautil.HEALTH_OK
 	}
 	retErr := cmderror.MergeCmdErrorExceptSuccess(errs)
-	cCmd.Error = &retErr
+	cCmd.Error = retErr
 	sort.Slice(rows, func(i, j int) bool {
 		return rows[i][cobrautil.ROW_COPYSET_KEY] < rows[j][cobrautil.ROW_COPYSET_KEY]
 	})
@@ -255,5 +261,5 @@ func (cCmd *CopysetCommand) UpdateCopysteGap(timeout time.Duration) *cmderror.Cm
 		return true
 	})
 	retErr := cmderror.MergeCmdErrorExceptSuccess(errs)
-	return &retErr
+	return retErr
 }

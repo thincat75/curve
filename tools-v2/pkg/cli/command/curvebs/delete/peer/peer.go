@@ -90,10 +90,10 @@ func (cCmd *Command) AddFlags() {
 	config.AddRpcRetryTimesFlag(cCmd.Cmd)
 	config.AddRpcTimeoutFlag(cCmd.Cmd)
 
-	config.AddBSLogicalPoolIdFlag(cCmd.Cmd)
-	config.AddBSCopysetIdFlag(cCmd.Cmd)
+	config.AddBsLogicalPoolIdRequiredFlag(cCmd.Cmd)
+	config.AddBsCopysetIdRequiredFlag(cCmd.Cmd)
 
-	config.AddBSPeersConfFlag(cCmd.Cmd)
+	config.AddBsPeersConfFlag(cCmd.Cmd)
 }
 
 func (cCmd *Command) Init(cmd *cobra.Command, args []string) error {
@@ -104,18 +104,11 @@ func (cCmd *Command) Init(cmd *cobra.Command, args []string) error {
 		cCmd.Header, []string{},
 	))
 
-	var err error
 	cCmd.opts.Timeout = config.GetFlagDuration(cCmd.Cmd, config.RPCTIMEOUT)
 	cCmd.opts.RetryTimes = config.GetFlagInt32(cCmd.Cmd, config.RPCRETRYTIMES)
 
-	cCmd.copysetID, err = config.GetBsFlagUint32(cCmd.Cmd, config.CURVEBS_COPYSET_ID)
-	if err != nil {
-		return err
-	}
-	cCmd.logicalPoolID, err = config.GetBsFlagUint32(cCmd.Cmd, config.CURVEBS_LOGIC_POOL_ID)
-	if err != nil {
-		return err
-	}
+	cCmd.copysetID = config.GetBsFlagUint32(cCmd.Cmd, config.CURVEBS_COPYSET_ID)
+	cCmd.logicalPoolID = config.GetBsFlagUint32(cCmd.Cmd, config.CURVEBS_LOGIC_POOL_ID)
 
 	// parse peers config
 	peers := config.GetBsFlagStringSlice(cCmd.Cmd, config.CURVEBS_PEERS_ADDRESS)

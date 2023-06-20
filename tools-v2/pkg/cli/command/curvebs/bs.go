@@ -26,12 +26,16 @@ import (
 	"github.com/spf13/cobra"
 
 	basecmd "github.com/opencurve/curve/tools-v2/pkg/cli/command"
+	"github.com/opencurve/curve/tools-v2/pkg/cli/command/curvebs/check"
+	"github.com/opencurve/curve/tools-v2/pkg/cli/command/curvebs/clean_recycle"
 	"github.com/opencurve/curve/tools-v2/pkg/cli/command/curvebs/create"
 	"github.com/opencurve/curve/tools-v2/pkg/cli/command/curvebs/delete"
 	"github.com/opencurve/curve/tools-v2/pkg/cli/command/curvebs/list"
 	"github.com/opencurve/curve/tools-v2/pkg/cli/command/curvebs/query"
+	"github.com/opencurve/curve/tools-v2/pkg/cli/command/curvebs/snapshot"
 	"github.com/opencurve/curve/tools-v2/pkg/cli/command/curvebs/status"
 	"github.com/opencurve/curve/tools-v2/pkg/cli/command/curvebs/update"
+	"github.com/opencurve/curve/tools-v2/pkg/cli/command/curvebs/clone"
 )
 
 type CurveBsCommand struct {
@@ -48,6 +52,10 @@ func (bsCmd *CurveBsCommand) AddSubCommands() {
 		delete.NewDeleteCommand(),
 		create.NewCreateCmd(),
 		update.NewUpdateCommand(),
+		clean_recycle.NewCleanRecycleCommand(),
+		check.NewCheckCommand(),
+		snapshot.NewSnapshotCommand(),
+    clone.NewCloneCommand(),
 	)
 }
 

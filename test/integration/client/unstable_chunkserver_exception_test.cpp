@@ -50,8 +50,8 @@ const char* kMdsConfPath = "./test/integration/unstable_test_mds.conf";
 const char* kCSConfPath = "./test/integration/unstable_test_cs.conf";
 const char* kClientConfPath = "./test/integration/unstable_test_client.conf";
 
-const char* kEtcdClientIpPort = "127.0.0.1:30000";
-const char* kEtcdPeerIpPort = "127.0.0.1:29999";
+const char* kEtcdClientIpPort = "127.0.0.1:21000";
+const char* kEtcdPeerIpPort = "127.0.0.1:20999";
 const char* kMdsIpPort = "127.0.0.1:30010";
 const char* kClientInflightNum = "6";
 const char* kLogPath = "./runlog/";
@@ -230,6 +230,10 @@ class UnstableCSModuleException : public ::testing::Test {
         system("rm -rf module_exception_curve_unstable_cs.etcd");
         system("rm -rf module_exception_curve_unstable_cs");
         system("rm -rf ttt");
+
+        ::unlink(kMdsConfPath);
+        ::unlink(kCSConfPath);
+        ::unlink(kClientConfPath);
     }
 
     static void StartAllChunkserver() {
@@ -311,9 +315,9 @@ TEST_F(UnstableCSModuleException, TestCommonReadAndWrite) {
 
     ::Create(filename.c_str(), &info, 10ull * 1024 * 1024 * 1024);
     int fd = ::Open(filename.c_str(), &info);
-    int ret = ::Read(fd, readBuff.get(), offset, length);
+    (void)::Read(fd, readBuff.get(), offset, length);
     LOG(INFO) << "Read finish, here";
-    ret = ::Write(fd, readBuff.get(), offset, length);
+    (void)::Write(fd, readBuff.get(), offset, length);
     LOG(INFO) << "Write finish, here";
 
     ::Close(fd);

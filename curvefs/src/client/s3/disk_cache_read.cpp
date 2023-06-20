@@ -37,9 +37,9 @@ namespace curvefs {
 namespace client {
 
 void DiskCacheRead::Init(std::shared_ptr<PosixWrapper> posixWrapper,
-                         const std::string cacheDir) {
+                         const std::string cacheDir, uint32_t objectPrefix) {
     posixWrapper_ = posixWrapper;
-    DiskCacheBase::Init(posixWrapper, cacheDir);
+    DiskCacheBase::Init(posixWrapper, cacheDir, objectPrefix);
 }
 
 int DiskCacheRead::ReadDiskFile(const std::string name, char *buf,
@@ -47,7 +47,7 @@ int DiskCacheRead::ReadDiskFile(const std::string name, char *buf,
     VLOG(6) << "ReadDiskFile start. name = " << name << ", offset = " << offset
             << ", length = " << length;
     std::string fileFullPath;
-    int fd, ret;
+    int fd;
     fileFullPath = GetCacheIoFullDir() + "/" + name;
     fd = posixWrapper_->open(fileFullPath.c_str(), O_RDONLY, MODE);
     if (fd < 0) {
@@ -69,7 +69,7 @@ int DiskCacheRead::ReadDiskFile(const std::string name, char *buf,
         posixWrapper_->close(fd);
         return readLen;
     }
-    if (readLen < length) {
+    if (readLen < static_cast<ssize_t>(length)) {
         LOG(ERROR) << "read disk file is not entirely. read len = " << readLen
                    << ", but want len = " << length << ", file = " << name;
         posixWrapper_->close(fd);
@@ -85,7 +85,7 @@ int DiskCacheRead::LinkWriteToRead(const std::string fileName,
                                    const std::string fullWriteDir,
                                    const std::string fullReadDir) {
     VLOG(6) << "LinkWriteToRead start. name = " << fileName;
-    std::string fullReadPath, fullWritePath;
+    std::string fullReadPath, fullWritePath, dirPath;
     fullWritePath = fullWriteDir + "/" + fileName;
     fullReadPath = fullReadDir + "/" + fileName;
     int ret;
@@ -94,6 +94,16 @@ int DiskCacheRead::LinkWriteToRead(const std::string fileName,
                    << ", file = " << fullWritePath;
         return -1;
     }
+
+    if (objectPrefix_ != 0) {
+        ret = CreateDir(fullReadPath);
+        if (ret < 0 && errno != EEXIST) {
+            LOG(ERROR) << "Mkdir error. ret = " << ret << ", errno = " << errno
+                       << ", path is " << fullReadPath;
+            return -1;
+        }
+    }
+
     ret = posixWrapper_->link(fullWritePath.c_str(), fullReadPath.c_str());
     if (ret < 0 &&
       errno != EEXIST ) {
@@ -138,7 +148,7 @@ int DiskCacheRead::WriteDiskFile(const std::string fileName, const char *buf,
         return fd;
     }
     ssize_t writeLen = posixWrapper_->write(fd, buf, length);
-    if (writeLen < 0 || writeLen < length) {
+    if (writeLen < static_cast<ssize_t>(length)) {
         LOG(ERROR) << "write disk file error. ret = " << writeLen
                    << ", file = " << fileName;
         posixWrapper_->close(fd);

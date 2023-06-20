@@ -28,6 +28,7 @@
 
 #include "curvefs/src/client/s3/client_s3_adaptor.h"
 #include "curvefs/src/client/s3/disk_cache_manager.h"
+#include "curvefs/src/common/s3util.h"
 
 namespace curvefs {
 
@@ -65,6 +66,7 @@ DiskCacheManager::DiskCacheManager(std::shared_ptr<PosixWrapper> posixWrapper,
     safeRatio_ = 0;
     diskUsedInit_ = false;
     maxUsableSpaceBytes_ = 0;
+    objectPrefix_ = 0;
     // cannot limit the size,
     // because cache is been delete must after upload to s3
     cachedObjName_ = std::make_shared<
@@ -85,10 +87,10 @@ int DiskCacheManager::Init(std::shared_ptr<S3Client> client,
     maxUsableSpaceBytes_ = option.diskCacheOpt.maxUsableSpaceBytes;
     maxFileNums_ = option.diskCacheOpt.maxFileNums;
     cmdTimeoutSec_ = option.diskCacheOpt.cmdTimeoutSec;
-
-    cacheWrite_->Init(client_, posixWrapper_, cacheDir_,
-                      option.diskCacheOpt.asyncLoadPeriodMs, cachedObjName_);
-    cacheRead_->Init(posixWrapper_, cacheDir_);
+    objectPrefix_ = option.objectPrefix;
+    cacheWrite_->Init(client_, posixWrapper_, cacheDir_, objectPrefix_,
+        option.diskCacheOpt.asyncLoadPeriodMs, cachedObjName_);
+    cacheRead_->Init(posixWrapper_, cacheDir_, objectPrefix_);
     int ret;
     ret = CreateDir();
     if (ret < 0) {
@@ -157,13 +159,12 @@ int DiskCacheManager::ClearReadCache(const std::list<std::string> &files) {
     return cacheRead_->ClearReadCache(files);
 }
 
-void DiskCacheManager::AddCache(const std::string name,
-  bool cacheWriteExist) {
+void DiskCacheManager::AddCache(const std::string &name) {
     cachedObjName_->Put(name);
     VLOG(9) << "cache size is: " << cachedObjName_->Size();
 }
 
-bool DiskCacheManager::IsCached(const std::string name) {
+bool DiskCacheManager::IsCached(const std::string &name) {
     if (!cachedObjName_->IsCached(name)) {
         VLOG(9) << "not cached, name = " << name;
         return false;
@@ -178,7 +179,9 @@ bool DiskCacheManager::IsCacheClean() {
 
 int DiskCacheManager::UmountDiskCache() {
     LOG(INFO) << "umount disk cache.";
-    diskInitThread_.join();
+    if (diskInitThread_.joinable()) {
+        diskInitThread_.join();
+    }
     TrimStop();
     cacheWrite_->AsyncUploadStop();
     LOG_IF(ERROR, !IsCacheClean()) << "umount disk cache error.";
@@ -359,6 +362,9 @@ void DiskCacheManager::TrimCache() {
     waitIntervalSec_.Init(trimCheckIntervalSec_ * 1000);
     // trim will start after get the disk size
     while (!IsDiskUsedInited()) {
+        if (!isRunning_) {
+            return;
+        }
         waitIntervalSec_.WaitForNextExcution();
     }
     // 1. check cache disk usage every sleepSec seconds.
@@ -385,8 +391,12 @@ void DiskCacheManager::TrimCache() {
             }
 
             VLOG(6) << "obj will be removed01: " << cacheKey;
-            cacheReadFile = cacheReadFullDir + "/" + cacheKey;
-            cacheWriteFile = cacheWriteFullDir + "/" + cacheKey;
+            cacheReadFile = cacheReadFullDir + "/" +
+                    curvefs::common::s3util::GenPathByObjName(
+                        cacheKey, objectPrefix_);
+            cacheWriteFile = cacheWriteFullDir + "/" +
+                    curvefs::common::s3util::GenPathByObjName(
+                        cacheKey, objectPrefix_);
             struct stat statFile;
             int ret = 0;
             ret = posixWrapper_->stat(cacheWriteFile.c_str(), &statFile);

@@ -21,10 +21,13 @@
  */
 
 #include <glog/logging.h>
+#include <map>
 #include "src/mds/server/mds.h"
 #include "src/mds/nameserver2/helper/namespace_helper.h"
 #include "src/mds/topology/topology_storge_etcd.h"
 #include "src/common/lru_cache.h"
+
+#include "absl/strings/str_split.h"
 
 using ::curve::mds::topology::TopologyStorageEtcd;
 using ::curve::mds::topology::TopologyStorageCodec;
@@ -244,7 +247,7 @@ void MDS::InitEtcdClient(const EtcdConf& etcdConf,
     auto res = etcdClient_->Init(etcdConf, etcdTimeout, retryTimes);
     LOG_IF(FATAL, res != EtcdErrCode::EtcdOK)
         << "init etcd client err! "
-        << "etcdaddr: " << std::string{etcdConf.Endpoints, etcdConf.len}
+        << "etcdaddr: " << std::string(etcdConf.Endpoints, etcdConf.len)
         << ", etcdaddr len: " << etcdConf.len
         << ", etcdtimeout: " << etcdConf.DialTimeout
         << ", operation timeout: " << etcdTimeout
@@ -258,7 +261,7 @@ void MDS::InitEtcdClient(const EtcdConf& etcdConf,
         << "Run mds err. Check if etcd is running.";
 
     LOG(INFO) << "init etcd client ok! "
-            << "etcdaddr: " << std::string{etcdConf.Endpoints, etcdConf.len}
+            << "etcdaddr: " << std::string(etcdConf.Endpoints, etcdConf.len)
             << ", etcdaddr len: " << etcdConf.len
             << ", etcdtimeout: " << etcdConf.DialTimeout
             << ", operation timeout: " << etcdTimeout
@@ -510,13 +513,15 @@ void MDS::InitCurveFSOptions(CurveFSOption *curveFSOptions) {
         "mds.curvefs.minFileLength", &curveFSOptions->minFileLength);
     conf_->GetValueFatalIfFail(
         "mds.curvefs.maxFileLength", &curveFSOptions->maxFileLength);
-    FileRecordOptions fileRecordOptions;
     InitFileRecordOptions(&curveFSOptions->fileRecordOptions);
 
-    RootAuthOption authOptions;
     InitAuthOptions(&curveFSOptions->authOptions);
 
     InitThrottleOption(&curveFSOptions->throttleOption);
+
+    LOG_IF(FATAL, !ParsePoolsetRules(conf_->GetStringValue("mds.poolset.rules"),
+                                     &curveFSOptions->poolsetRules))
+            << "Fail to parse poolset rules";
 }
 
 void MDS::InitDLockOption(std::shared_ptr<DLockOpts> dlockOpts) {
@@ -657,5 +662,32 @@ void MDS::InitHeartbeatOption(HeartbeatOption* heartbeatOption) {
     conf_->GetValueFatalIfFail("mds.heartbeat.clean_follower_afterMs",
                         &heartbeatOption->cleanFollowerAfterMs);
 }
+
+bool ParsePoolsetRules(const std::string& str,
+                       std::map<std::string, std::string>* rules) {
+    rules->clear();
+
+    if (str.empty()) {
+        return true;
+    }
+
+    for (absl::string_view sp : absl::StrSplit(str, ';')) {
+        rules->insert(absl::StrSplit(sp, ':'));
+    }
+
+    for (const auto& rule : *rules) {
+        const auto& key = rule.first;
+
+        if (key.empty() || key.front() != '/' || key.back() != '/') {
+            LOG(ERROR) << "Invalid poolset rules, key must starts and ends "
+                          "with `/`, rules: `"
+                       << str << "`";
+            return false;
+        }
+    }
+
+    return true;
+}
+
 }  // namespace mds
 }  // namespace curve

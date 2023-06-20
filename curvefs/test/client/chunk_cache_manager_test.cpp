@@ -47,17 +47,20 @@ class ChunkCacheManagerTest : public testing::Test {
         S3ClientAdaptorOption option;
         option.blockSize = 1 * 1024 * 1024;
         option.chunkSize = 4 * 1024 * 1024;
+        option.baseSleepUs = 500;
+        option.objectPrefix = 0;
         option.pageSize = 64 * 1024;
         option.intervalSec = 5000;
         option.flushIntervalSec = 5000;
         option.readCacheMaxByte = 104857600;
         option.writeCacheMaxByte = 10485760000;
+        option.readCacheThreads = 5;
         option.chunkFlushThreads = 5;
         option.diskCacheOpt.diskCacheType = (DiskCacheType)0;
         s3ClientAdaptor_ = new S3ClientAdaptorImpl();
         auto fsCacheManager_ = std::make_shared<FsCacheManager>(
             s3ClientAdaptor_, option.readCacheMaxByte, option.writeCacheMaxByte,
-            nullptr);
+            option.readCacheThreads, nullptr);
         s3ClientAdaptor_->Init(option, nullptr, nullptr, nullptr,
                                fsCacheManager_, nullptr, nullptr);
         chunkCacheManager_ = std::make_shared<ChunkCacheManager>(
@@ -76,7 +79,6 @@ class ChunkCacheManagerTest : public testing::Test {
 TEST_F(ChunkCacheManagerTest, test_write_new_data) {
     uint64_t offset = 0;
     uint64_t len = 1024;
-    int length = len;
     char *buf = new char[len];
 
     chunkCacheManager_->WriteNewDataCache(s3ClientAdaptor_, offset, len, buf);

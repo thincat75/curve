@@ -38,24 +38,23 @@ namespace topology {
 // logical pool is not designated when calling this function. When executing,
 // a logical will be chosen following the policy (randomly or weighted)
 bool TopologyChunkAllocatorImpl::AllocateChunkRandomInSingleLogicalPool(
-    curve::mds::FileType fileType,
-    uint32_t chunkNumber,
-    ChunkSizeType chunkSize,
+    curve::mds::FileType fileType, const std::string& pstName,
+    uint32_t chunkNumber, ChunkSizeType chunkSize,
     std::vector<CopysetIdInfo> *infos) {
+    (void)chunkSize;
     if (fileType != INODE_PAGEFILE) {
-        LOG(ERROR) << "Invalid FileType, fileType = "
-                   << fileType;
+        LOG(ERROR) << "Invalid FileType, fileType = " << fileType;
         return false;
     }
     PoolIdType logicalPoolChosenId = 0;
-    bool ret = ChooseSingleLogicalPool(fileType, &logicalPoolChosenId);
+    bool ret = ChooseSingleLogicalPool(fileType, pstName, &logicalPoolChosenId);
     if (!ret) {
         LOG(ERROR) << "ChooseSingleLogicalPool fail, ret =  " << ret;
         return false;
     }
 
-    CopySetFilter filter = [](const CopySetInfo& copyset) {
-            return copyset.IsAvailable();
+    CopySetFilter filter = [](const CopySetInfo &copyset) {
+        return copyset.IsAvailable();
     };
     std::vector<CopySetIdType> copySetIds =
         topology_->GetCopySetsInLogicalPool(logicalPoolChosenId, filter);
@@ -67,32 +66,28 @@ bool TopologyChunkAllocatorImpl::AllocateChunkRandomInSingleLogicalPool(
         return false;
     }
     ret = AllocateChunkPolicy::AllocateChunkRandomInSingleLogicalPool(
-               copySetIds,
-               logicalPoolChosenId,
-               chunkNumber,
-               infos);
+        copySetIds, logicalPoolChosenId, chunkNumber, infos);
     return ret;
 }
 
 bool TopologyChunkAllocatorImpl::AllocateChunkRoundRobinInSingleLogicalPool(
-    curve::mds::FileType fileType,
-    uint32_t chunkNumber,
-    ChunkSizeType chunkSize,
+    curve::mds::FileType fileType, const std::string& pstName,
+    uint32_t chunkNumber, ChunkSizeType chunkSize,
     std::vector<CopysetIdInfo> *infos) {
+    (void)chunkSize;
     if (fileType != INODE_PAGEFILE) {
-        LOG(ERROR) << "Invalid FileType, fileType = "
-                   << fileType;
+        LOG(ERROR) << "Invalid FileType, fileType = " << fileType;
         return false;
     }
     PoolIdType logicalPoolChosenId = 0;
-    bool ret = ChooseSingleLogicalPool(fileType, &logicalPoolChosenId);
+    bool ret = ChooseSingleLogicalPool(fileType, pstName, &logicalPoolChosenId);
     if (!ret) {
         LOG(ERROR) << "ChooseSingleLogicalPool fail, ret = false.";
         return false;
     }
 
-    CopySetFilter filter = [](const CopySetInfo& copyset) {
-            return copyset.IsAvailable();
+    CopySetFilter filter = [](const CopySetInfo &copyset) {
+        return copyset.IsAvailable();
     };
     std::vector<CopySetIdType> copySetIds =
         topology_->GetCopySetsInLogicalPool(logicalPoolChosenId, filter);
@@ -120,11 +115,7 @@ bool TopologyChunkAllocatorImpl::AllocateChunkRoundRobinInSingleLogicalPool(
     }
 
     ret = AllocateChunkPolicy::AllocateChunkRoundRobinInSingleLogicalPool(
-               copySetIds,
-               logicalPoolChosenId,
-               &nextIndex,
-               chunkNumber,
-               infos);
+        copySetIds, logicalPoolChosenId, &nextIndex, chunkNumber, infos);
     if (ret) {
         nextIndexMap_[logicalPoolChosenId] = nextIndex;
     }
@@ -132,7 +123,7 @@ bool TopologyChunkAllocatorImpl::AllocateChunkRoundRobinInSingleLogicalPool(
 }
 
 bool TopologyChunkAllocatorImpl::ChooseSingleLogicalPool(
-    curve::mds::FileType fileType,
+    curve::mds::FileType fileType, const std::string& pstName,
     PoolIdType *poolOut) {
     std::vector<PoolIdType> logicalPools;
 
@@ -149,12 +140,11 @@ bool TopologyChunkAllocatorImpl::ChooseSingleLogicalPool(
         break;
     }
 
-    auto logicalPoolFilter =
-    [poolType, this] (const LogicalPool &pool) {
+    auto logicalPoolFilter = [poolType, this](const LogicalPool &pool) {
         return pool.GetLogicalPoolAvaliableFlag() &&
-            (!this->enableLogicalPoolStatus_ ||
-            AllocateStatus::ALLOW == pool.GetStatus()) &&
-            pool.GetLogicalPoolType() == poolType;
+               (!this->enableLogicalPoolStatus_ ||
+                AllocateStatus::ALLOW == pool.GetStatus()) &&
+               pool.GetLogicalPoolType() == poolType;
     };
 
     logicalPools = topology_->GetLogicalPoolInCluster(logicalPoolFilter);
@@ -167,7 +157,7 @@ bool TopologyChunkAllocatorImpl::ChooseSingleLogicalPool(
     std::map<PoolIdType, double> poolWeightMap;
     std::vector<PoolIdType> poolToChoose;
     std::map<PoolIdType, double> poolsEnough;
-    GetRemainingSpaceInLogicalPool(logicalPools, &poolsEnough);
+    GetRemainingSpaceInLogicalPool(logicalPools, &poolsEnough, pstName);
     for (auto pool : poolsEnough) {
         // choose logical pool according to its weight
         if (ChoosePoolPolicy::kWeight == policy_) {
@@ -181,15 +171,16 @@ bool TopologyChunkAllocatorImpl::ChooseSingleLogicalPool(
         return AllocateChunkPolicy::ChooseSingleLogicalPoolByWeight(
             poolWeightMap, poolOut);
     } else {
-        return AllocateChunkPolicy::ChooseSingleLogicalPoolRandom(
-            poolToChoose, poolOut);
+        return AllocateChunkPolicy::ChooseSingleLogicalPoolRandom(poolToChoose,
+                                                                  poolOut);
     }
 }
 
 void TopologyChunkAllocatorImpl::GetRemainingSpaceInLogicalPool(
-        const std::vector<PoolIdType>& logicalPools,
-        std::map<PoolIdType, double>* enoughSpacePools) {
-        for (auto pid : logicalPools) {
+    const std::vector<PoolIdType> &logicalPools,
+    std::map<PoolIdType, double> *enoughSpacePools,
+    const std::string& pstName) {
+    for (auto pid : logicalPools) {
         LogicalPool lPool;
         if (!topology_->GetLogicalPool(pid, &lPool)) {
             continue;
@@ -198,13 +189,24 @@ void TopologyChunkAllocatorImpl::GetRemainingSpaceInLogicalPool(
         if (!topology_->GetPhysicalPool(lPool.GetPhysicalPoolId(), &pPool)) {
             continue;
         }
+
+        PoolsetIdType poolsetId = pPool.GetPoolsetId();
+        Poolset poolset;
+        if (!topology_->GetPoolset(poolsetId, &poolset)) {
+            LOG(WARNING) << "Get poolset fail , poolset is null";
+            continue;
+        }
+        if (pstName != poolset.GetName()) {
+            continue;
+        }
+
         uint64_t diskCapacity = 0;
         double available = available_;
         if (chunkFilePoolAllocHelp_->GetUseChunkFilepool()) {
             topoStat_->GetChunkPoolSize(lPool.GetPhysicalPoolId(),
-                        &diskCapacity);
-            available = available *
-                chunkFilePoolAllocHelp_->GetAvailable() / 100;
+                                        &diskCapacity);
+            available =
+                available * chunkFilePoolAllocHelp_->GetAvailable() / 100;
             diskCapacity = diskCapacity * available / 100;
         } else {
             diskCapacity = pPool.GetDiskCapacity();
@@ -221,24 +223,21 @@ void TopologyChunkAllocatorImpl::GetRemainingSpaceInLogicalPool(
         alloc *= lPool.GetReplicaNum();
 
         // calculate remaining capacity
-        uint64_t diskRemainning =
-            (diskCapacity > alloc) ? diskCapacity - alloc : 0;
+        uint64_t diskRemainning = (static_cast<int64_t>(diskCapacity) > alloc)
+                                      ? diskCapacity - alloc
+                                      : 0;
 
         LOG(INFO) << "ChooseSingleLogicalPool find pool {"
-                  << "diskCapacity:" << diskCapacity
-                  << ", diskAlloc:" << alloc
-                  << ", diskRemainning:" << diskRemainning
-                  << "}";
+                  << "diskCapacity:" << diskCapacity << ", diskAlloc:" << alloc
+                  << ", diskRemainning:" << diskRemainning << "}";
         if (diskRemainning > 0) {
             (*enoughSpacePools)[pid] = diskRemainning;
         }
     }
 }
 bool AllocateChunkPolicy::AllocateChunkRandomInSingleLogicalPool(
-    std::vector<CopySetIdType> copySetIds,
-    PoolIdType logicalPoolId,
-    uint32_t chunkNumber,
-    std::vector<CopysetIdInfo> *infos) {
+    std::vector<CopySetIdType> copySetIds, PoolIdType logicalPoolId,
+    uint32_t chunkNumber, std::vector<CopysetIdInfo> *infos) {
     infos->clear();
 
     static std::random_device rd;   // generating seed for random number engine
@@ -256,10 +255,8 @@ bool AllocateChunkPolicy::AllocateChunkRandomInSingleLogicalPool(
 }
 
 bool AllocateChunkPolicy::AllocateChunkRoundRobinInSingleLogicalPool(
-    std::vector<CopySetIdType> copySetIds,
-    PoolIdType logicalPoolId,
-    uint32_t *nextIndex,
-    uint32_t chunkNumber,
+    std::vector<CopySetIdType> copySetIds, PoolIdType logicalPoolId,
+    uint32_t *nextIndex, uint32_t chunkNumber,
     std::vector<CopysetIdInfo> *infos) {
     if (copySetIds.empty()) {
         return false;
@@ -279,8 +276,7 @@ bool AllocateChunkPolicy::AllocateChunkRoundRobinInSingleLogicalPool(
 }
 
 bool AllocateChunkPolicy::ChooseSingleLogicalPoolByWeight(
-    const std::map<PoolIdType, double> &poolWeightMap,
-    PoolIdType *poolIdOut) {
+    const std::map<PoolIdType, double> &poolWeightMap, PoolIdType *poolIdOut) {
     if (poolWeightMap.empty()) {
         LOG(ERROR) << "ChooseSingleLogicalPoolByWeight, "
                    << "poolWeightMap is empty.";
@@ -316,8 +312,7 @@ bool AllocateChunkPolicy::ChooseSingleLogicalPoolByWeight(
 }
 
 bool AllocateChunkPolicy::ChooseSingleLogicalPoolRandom(
-    const std::vector<PoolIdType> &pools,
-    PoolIdType *poolIdOut) {
+    const std::vector<PoolIdType> &pools, PoolIdType *poolIdOut) {
     if (pools.empty()) {
         LOG(ERROR) << "ChooseSingleLogicalPoolRandom, "
                    << "pools is empty.";

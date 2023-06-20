@@ -29,7 +29,8 @@ namespace curve {
 namespace mds {
 bool ChunkSegmentAllocatorImpl::AllocateChunkSegment(FileType type,
         SegmentSizeType segmentSize, ChunkSizeType chunkSize,
-        offset_t offset, PageFileSegment *segment)  {
+        const std::string& pstName, offset_t offset,
+        PageFileSegment *segment)  {
         if (segment == nullptr) {
             LOG(ERROR) << "segment pointer is null";
             return false;
@@ -54,7 +55,7 @@ bool ChunkSegmentAllocatorImpl::AllocateChunkSegment(FileType type,
         std::vector<CopysetIdInfo> copysets;
         if (!topologyChunkAllocator_->
                 AllocateChunkRoundRobinInSingleLogicalPool(
-                type, chunkNum, chunkSize, &copysets)) {
+                type, pstName, chunkNum, chunkSize, &copysets)) {
             LOG(ERROR) << "AllocateChunkRoundRobinInSingleLogicalPool error";
             return false;
         }
@@ -63,7 +64,7 @@ bool ChunkSegmentAllocatorImpl::AllocateChunkSegment(FileType type,
             return false;
         }
         auto logicalpoolId = copysets[0].logicalPoolId;
-        for (auto i = 0; i < copysets.size(); i++) {
+        for (size_t i = 0; i < copysets.size(); i++) {
             if (copysets[i].logicalPoolId !=  logicalpoolId) {
                 LOG(ERROR) << "Allocate Copysets id not same, copysets["
                             << i << "] = "
@@ -91,4 +92,3 @@ bool ChunkSegmentAllocatorImpl::AllocateChunkSegment(FileType type,
 
 }   // namespace mds
 }   // namespace curve
-

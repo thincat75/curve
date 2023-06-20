@@ -64,13 +64,15 @@ class ClientS3AdaptorTest : public testing::Test {
         S3ClientAdaptorOption option;
         option.blockSize = 1 * 1024 * 1024;
         option.chunkSize = 4 * 1024 * 1024;
+        option.baseSleepUs = 500;
         option.pageSize = 64 * 1024;
         option.intervalSec = 5000;
         option.flushIntervalSec = 5000;
         option.readCacheMaxByte = 104857600;
         option.writeCacheMaxByte = 10485760000;
-        option.fuseMaxSize = 131072;
+        option.readCacheThreads = 5;
         option.chunkFlushThreads = 5;
+        option.objectPrefix = 0;
         option.diskCacheOpt.diskCacheType = (DiskCacheType)0;
         kvClientManager_ = nullptr;
         s3ClientAdaptor_->Init(option, mockS3Client_, mockInodeManager_,
@@ -122,7 +124,7 @@ TEST_F(ClientS3AdaptorTest, write_success) {
     uint64_t inodeId = 1;
     uint64_t offset = 0;
     uint64_t length = 1024;
-    char buf[length] = {0};
+    char *buf = new char[length];
     memset(buf, 'a', length);
     auto fileCache = std::make_shared<MockFileCacheManager>();
     EXPECT_CALL(*mockFsCacheManager_, FindOrCreateFileCacheManager(_, _))
@@ -134,32 +136,35 @@ TEST_F(ClientS3AdaptorTest, write_success) {
     EXPECT_CALL(*mockFsCacheManager_, MemCacheRatio()).WillOnce(Return(10));
     EXPECT_CALL(*fileCache, Write(_, _, _)).WillOnce(Return(length));
     ASSERT_EQ(length, s3ClientAdaptor_->Write(inodeId, offset, length, buf));
+    delete[] buf;
 }
 
 TEST_F(ClientS3AdaptorTest, read_success) {
     uint64_t inodeId = 1;
     uint64_t offset = 0;
     uint64_t length = 1024;
-    char buf[length] = {0};
+    char *buf = new char[length];
     memset(buf, 'a', length);
     auto fileCache = std::make_shared<MockFileCacheManager>();
     EXPECT_CALL(*mockFsCacheManager_, FindOrCreateFileCacheManager(_, _))
         .WillOnce(Return(fileCache));
     EXPECT_CALL(*fileCache, Read(_, _, _, _)).WillOnce(Return(length));
     ASSERT_EQ(length, s3ClientAdaptor_->Read(inodeId, offset, length, buf));
+    delete[] buf;
 }
 
 TEST_F(ClientS3AdaptorTest, read_fail) {
     uint64_t inodeId = 1;
     uint64_t offset = 0;
     uint64_t length = 1024;
-    char buf[length] = {0};
+    char *buf = new char[length];
     memset(buf, 'a', length);
     auto fileCache = std::make_shared<MockFileCacheManager>();
     EXPECT_CALL(*mockFsCacheManager_, FindOrCreateFileCacheManager(_, _))
         .WillOnce(Return(fileCache));
     EXPECT_CALL(*fileCache, Read(_, _, _, _)).WillOnce(Return(-1));
     ASSERT_EQ(-1, s3ClientAdaptor_->Read(inodeId, offset, length, buf));
+    delete[] buf;
 }
 
 TEST_F(ClientS3AdaptorTest, truncate_small) {

@@ -34,12 +34,12 @@
 
 #include "curvefs/src/common/define.h"
 #include "curvefs/proto/metaserver.pb.h"
-#include "curvefs/src/client/error_code.h"
 #include "curvefs/src/client/rpcclient/metaserver_client.h"
 #include "src/common/concurrent/concurrent.h"
 #include "curvefs/src/client/volume/extent_cache.h"
 #include "curvefs/src/client/metric/client_metric.h"
 #include "src/common/timeutility.h"
+#include "curvefs/src/client/filesystem/error.h"
 
 using ::curvefs::metaserver::Inode;
 using ::curvefs::metaserver::S3ChunkInfoList;
@@ -53,14 +53,12 @@ constexpr int kChangeTime = 1 << 1;
 constexpr int kModifyTime = 1 << 2;
 
 using ::curvefs::metaserver::VolumeExtentList;
+using ::curvefs::client::filesystem::CURVEFS_ERROR;
 
 enum class InodeStatus {
     kNormal = 0,
     kError = -1,
 };
-
-// TODO(xuchaojie) : get from conf maybe?
-const uint32_t kOptimalIOBlockSize = 0x10000u;
 
 using rpcclient::MetaServerClient;
 using rpcclient::MetaServerClientImpl;
@@ -80,7 +78,7 @@ class InodeWrapper : public std::enable_shared_from_this<InodeWrapper> {
     InodeWrapper(Inode inode,
                  std::shared_ptr<MetaServerClient> metaClient,
                  std::shared_ptr<S3ChunkInfoMetric> s3ChunkInfoMetric = nullptr,
-                 uint64_t maxDataSize = ULONG_MAX,
+                 int64_t maxDataSize = LONG_MAX,
                  uint32_t refreshDataInterval = UINT_MAX)
         : inode_(std::move(inode)),
           status_(InodeStatus::kNormal),
@@ -400,8 +398,8 @@ class InodeWrapper : public std::enable_shared_from_this<InodeWrapper> {
     InodeAttr dirtyAttr_;
 
     InodeStatus status_;
-    uint64_t baseMaxDataSize_;
-    uint64_t maxDataSize_;
+    int64_t baseMaxDataSize_;
+    int64_t maxDataSize_;
     uint32_t refreshDataInterval_;
     uint64_t lastRefreshTime_;
 

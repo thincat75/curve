@@ -25,7 +25,6 @@ package mds
 import (
 	"fmt"
 
-	"github.com/olekukonko/tablewriter"
 	cmderror "github.com/opencurve/curve/tools-v2/internal/error"
 	cobrautil "github.com/opencurve/curve/tools-v2/internal/utils"
 	basecmd "github.com/opencurve/curve/tools-v2/pkg/cli/command"
@@ -59,8 +58,8 @@ func NewMdsCommand() *cobra.Command {
 }
 
 func (mCmd *MdsCommand) AddFlags() {
-	config.AddBsMdsFlagOption(mCmd.Cmd)
 	config.AddHttpTimeoutFlag(mCmd.Cmd)
+	config.AddBsMdsFlagOption(mCmd.Cmd)
 	config.AddBsMdsDummyFlagOption(mCmd.Cmd)
 }
 
@@ -84,9 +83,10 @@ func (mCmd *MdsCommand) Init(cmd *cobra.Command, args []string) error {
 	if addrErr.TypeCode() != cmderror.CODE_SUCCESS {
 		return fmt.Errorf(addrErr.Message)
 	}
+
+	timeout := viper.GetDuration(config.VIPER_GLOBALE_HTTPTIMEOUT)
 	for _, addr := range dummyAddrs {
 		// Use the dummy port to access the metric service
-		timeout := viper.GetDuration(config.VIPER_GLOBALE_HTTPTIMEOUT)
 
 		addrs := []string{addr}
 		statusMetric := basecmd.NewMetric(addrs, STATUS_SUBURI, timeout)
@@ -118,16 +118,20 @@ func (mCmd *MdsCommand) RunCommand(cmd *cobra.Command, args []string) error {
 		size++
 		go func(m *basecmd.Metric) {
 			result, err := basecmd.QueryMetric(m)
+
 			var key string
+
 			if m.SubUri == STATUS_SUBURI {
 				key = "status"
 			} else {
 				key = "version"
 			}
+
 			var value string
 			if err.TypeCode() == cmderror.CODE_SUCCESS {
 				value, err = basecmd.GetMetricValue(result)
 			}
+
 			results <- basecmd.MetricResult{
 				Addr:  m.Addrs[0],
 				Key:   key,
@@ -157,18 +161,21 @@ func (mCmd *MdsCommand) RunCommand(cmd *cobra.Command, args []string) error {
 			break
 		}
 	}
+
 	if len(errs) > 0 && len(errs) < len(mCmd.rows) {
 		mCmd.health = cobrautil.HEALTH_WARN
 	} else if len(errs) == 0 {
 		mCmd.health = cobrautil.HEALTH_OK
 	}
+
 	mergeErr := cmderror.MergeCmdErrorExceptSuccess(errs)
-	mCmd.Error = &mergeErr
+	mCmd.Error = mergeErr
 	list := cobrautil.ListMap2ListSortByKeys(mCmd.rows, mCmd.Header, []string{
 		cobrautil.ROW_STATUS, cobrautil.ROW_VERSION,
 	})
 	mCmd.TableNew.AppendBulk(list)
 	mCmd.Result = mCmd.rows
+
 	return nil
 }
 
@@ -188,13 +195,18 @@ func NewStatusMdsCommand() *MdsCommand {
 	return mdsCmd
 }
 
-func GetMdsStatus(caller *cobra.Command) (*interface{}, *tablewriter.Table, *cmderror.CmdError, cobrautil.ClUSTER_HEALTH_STATUS) {
+func GetMdsStatus(caller *cobra.Command) (*interface{}, *cmderror.CmdError, cobrautil.ClUSTER_HEALTH_STATUS) {
 	mdsCmd := NewStatusMdsCommand()
 	mdsCmd.Cmd.SetArgs([]string{
 		fmt.Sprintf("--%s", config.FORMAT), config.FORMAT_NOOUT,
 	})
 	config.AlignFlagsValue(caller, mdsCmd.Cmd, []string{config.RPCRETRYTIMES, config.RPCTIMEOUT, config.CURVEBS_MDSADDR})
 	mdsCmd.Cmd.SilenceErrors = true
-	mdsCmd.Cmd.Execute()
-	return &mdsCmd.Result, mdsCmd.TableNew, mdsCmd.Error, mdsCmd.health
+	err := mdsCmd.Cmd.Execute()
+	if err != nil {
+		retErr := cmderror.ErrBsGetMdsStatus()
+		retErr.Format(err.Error())
+		return nil, retErr, cobrautil.HEALTH_ERROR
+	}
+	return &mdsCmd.Result, cmderror.Success(), mdsCmd.health
 }

@@ -22,5 +22,9 @@ cc_library(
     hdrs = glob(["*.h"]),
     copts = CURVE_DEFAULT_COPTS,
     visibility = ["//visibility:public"],
-    deps = ["//external:gflags"],
+    deps = [
+        "//external:gflags",
+        "//external:bvar",
+        "//src/client:curve_client",
+    ],
 )

@@ -38,18 +38,15 @@ import (
 )
 
 const (
-	IP_PORT_REGEX = "((\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5]):([0-9]|[1-9]\\d{1,3}|[1-5]\\d{4}|6[0-4]\\d{4}|65[0-4]\\d{2}|655[0-2]\\d|6553[0-5]))|(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])\\.(\\d|[1-9]\\d|1\\d{2}|2[0-4]\\d|25[0-5])"
 	PATH_REGEX    = `^(/[^/ ]*)+/?$`
 	FS_NAME_REGEX = "^([a-z0-9]+\\-?)+$"
-)
+	K_STRING_TRUE = "true"
 
-func IsValidAddr(addr string) bool {
-	matched, err := regexp.MatchString(IP_PORT_REGEX, addr)
-	if err != nil || !matched {
-		return false
-	}
-	return true
-}
+	ROOT_PATH       = "/"
+	RECYCLEBIN_PATH = "/RecycleBin"
+
+	FALSE_STRING = "false"
+)
 
 func IsValidFsname(fsName string) bool {
 	matched, err := regexp.MatchString(FS_NAME_REGEX, fsName)
@@ -146,7 +143,7 @@ func ToUnderscoredName(src string) string {
 				if i != 0 && !IsUpper(rune(src[i-1])) && ret[len(ret)-1] != '-' {
 					ret += "_"
 				}
-				ret += string(c-'A'+'a')
+				ret += string(c - 'A' + 'a')
 			} else {
 				ret += string(c)
 			}
@@ -173,4 +170,28 @@ func Addr2IpPort(addr string) (string, uint32, *cmderror.CmdError) {
 		return "", 0, pErr
 	}
 	return ipPort[0], uint32(u64Port), cmderror.Success()
+}
+
+func StringList2Uint64List(strList []string) ([]uint64, error) {
+	retList := make([]uint64, 0)
+	for _, str := range strList {
+		v, err := strconv.ParseUint(str, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		retList = append(retList, v)
+	}
+	return retList, nil
+}
+
+func StringList2Uint32List(strList []string) ([]uint32, error) {
+	retList := make([]uint32, 0)
+	for _, str := range strList {
+		v, err := strconv.ParseUint(str, 10, 32)
+		if err != nil {
+			return nil, err
+		}
+		retList = append(retList, uint32(v))
+	}
+	return retList, nil
 }

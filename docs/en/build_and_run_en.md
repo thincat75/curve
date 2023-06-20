@@ -3,8 +3,12 @@
 # Build compilation environment
 
 **Note:**
-1. If you just want to experience the deployment and basic functions of CURVE, **you do not need to compile CURVE**, please refer to [deployment](https://github.com/opencurve/curveadm/wiki).
-2. This document is only used to help you build the CURVE code compilation environment, which is convenient for you to participate in the development, debugging and run tests of CURVE.
+1. If you just want to experience the deployment and basic functions of Curve, **you do not need to compile Curve**, please refer to [deployment](https://github.com/opencurve/curveadm/wiki).
+2. This document is only used to help you build the Curve code compilation environment, which is convenient for you to participate in the development, debugging and run tests of Curve.
+3. The following image and build procedures are currently only supported on x86 systems.
+4. To compile [arm branch](https://github.com/opencurve/curve/pull/2408), please follow [Dockerfile](https://github.com/opencurve/curve/blob/master/docker/debian9/compile/Dockerfile) to package and compile the image.
+5. Currently the master branch does not support compiling and running on the arm system
+6. Recommend using Debian 10 or later versions of the operating system. Other operating systems have not been thoroughly tested.
 
 ## Compile with docker (recommended)
 
@@ -24,35 +28,48 @@ Use the Dockerfile in the project directory to build. The command is as follows:
 docker build -t opencurvedocker/curve-base:build-debian9
 ```
 
-Note: The above operations are not recommended to be performed in the CURVE project directory, otherwise the files in the current directory will be copied to the docker image when building the image. It is recommended to copy the Dockerfile to the newly created clean directory to build the docker image.
+**Note:** The above operations are not recommended to be performed in the Curve project directory, otherwise the files in the current directory will be copied to the docker image when building the image. It is recommended to copy the Dockerfile to the newly created clean directory to build the docker image.
 
 ### Compile in docker image
 
 ```bash
-docker run -it opencurvedocker/curve-base:build-debian9 /bin/bash
-cd <workspace>
-git clone https://github.com/opencurve/curve.git or git clone https://gitee.com/mirrors/curve.git
-# (Optional step) Replace external dependencies with domestic download points or mirror warehouses, which can speed up compilation： bash replace-curve-repo.sh
+git clone https://github.com/opencurve/curve.git 或者 git clone https://gitee.com/mirrors/curve.git
+cd curve
+# If you want to complete the operation of compiling + making + uploading the image in the container, you can add the following parameters
+# -v /var/run/docker.sock:/var/run/docker.sock -v /root/.docker:/root/.docker
+#--rm will automatically delete the container after the container exits, if you want to keep the container, you can remove this parameter
+docker run --rm -v $(pwd):/curve -w /curve -v ${HOME}:${HOME} --user $(id -u ${USER}):$(id -g ${USER}) -v /etc/passwd:/etc/passwd:ro -v /etc/group:/etc/group:ro --privileged -it opencurvedocker/curve-base:build-debian9 bash
+# (Optional for Chinese mainland) Replace external dependencies with domestic download points or mirror warehouses, which can speed up compilation： bash replace-curve-repo.sh
+
 # before curve v2.0
 bash mk-tar.sh （compile curvebs and make tar package）
 bash mk-deb.sh （compile curvebs and make debian package）
-# after curve v2.0
-compile curvebs: cd curve && make build stor=bs dep=1
-compile curvefs: cd curve && make build stor=fs dep=1
+
+# (current) after curve v2.0
+# compile curvebs:
+make build stor=bs dep=1
+# or 
+make dep stor=bs && make build stor=bs
+# compile curvefs:
+make build stor=fs dep=1
+# or 
+make dep stor=fs && make build stor=fs
 ```
+
+**Note:** `mk-tar.sh` and `mk-deb.sh` are used for compiling and packaging curve v2.0. They are no longer maintained after v2.0.
 
 ## Compile on a physical machine
 
-CURVE compilation depends on:
+Curve compilation depends on:
 
 | Dependency | Version |
 |:-- |:-- |
 | bazel | 4.2.2 |
 | gcc   | Compatible version supporting C++11 |
 
-Other dependencies of CURVE are managed by bazel and do not need to be installed separately.
+Other dependencies of Curve are managed by bazel and do not need to be installed separately.
 
-**Note** The 4.* version of bazel can successfully compile the curve project, other versions are not compatible.
+**Note:** The 4.* version of bazel can successfully compile the curve project, other versions are not compatible.
 4.2.2 is the recommended version.
 
 ### Installation dependency
@@ -63,13 +80,40 @@ For dependencies, you can refer to the installation steps in [dockerfile](../../
 
 ```bash
 git clone https://github.com/opencurve/curve.git or git clone https://gitee.com/mirrors/curve.git
-# (Optional step) Replace external dependencies with domestic download points or mirror warehouses, which can speed up compilation： bash replace-curve-repo.sh
+# (Mainland China optional) Replace external dependencies with domestic download points or mirror warehouses, which can speed up compilation： bash replace-curve-repo.sh
 # before curve v2.0
 bash mk-tar.sh （compile curvebs and make tar package）
 bash mk-deb.sh （compile curvebs and make debian package）
-# after curve v2.0
-compile curvebs: cd curve && make build stor=bs dep=1
-compile curvefs: cd curve && make build stor=fs dep=1
+
+# (current) after curve v2.0
+# compile curvebs:
+make build stor=bs dep=1
+# or 
+make dep stor=bs && make build stor=bs
+# compile curvefs:
+make build stor=fs dep=1
+# or
+make dep stor=fs && make build stor=fs
+```
+
+### Make a mirror image
+
+This step can be performed in a container or on a physical machine.
+Note that if it is executed in a container, you need to add `-v /var/run/docker.sock:/var/run/docker.sock -v /root/.docker:/root/.docker when executing the `docker run` command ` parameter.
+
+```bash
+# Compile curvebs:
+# The following tag parameter can be customized for uploading to the mirror warehouse
+make image stor=bs tag=test
+# Compile curvefs:
+make image stor=fs tag=test
+```
+
+### Upload image
+
+```bash
+# test is the tag parameter in the previous step
+docker push test
 ```
 
 ## Test case compilation and execution
@@ -78,15 +122,24 @@ compile curvefs: cd curve && make build stor=fs dep=1
 
 Only compile all modules without packaging
 
-```
+```bash
 $ bash ./build.sh
 ```
 
-### Compile the corresponding module code and run the test
+### List all test modules
+
+```bash
+# curvebs
+bazel query '//test/...'
+# curvefs
+bazel query '//curvefs/test/...'
+```
+
+### Compile the corresponding module code
 
 Compile corresponding modules, such as common-test in the `test/common` directory
 
-```
+```bash
 $ bazel build test/common:common-test --copt -DHAVE_ZLIB=1 \
 $    --define=with_glog=true --compilation_mode=dbg \
 $    --define=libunwind=true
@@ -170,7 +223,7 @@ $ cd etcd-v3.4.10-linux-amd64 && cp etcd etcdctl /usr/bin
 
 #### Execute a single test module
 
-```
+```bash
 $ ./bazel-bin/test/common/common-test
 ```
 

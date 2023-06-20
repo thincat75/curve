@@ -65,7 +65,7 @@ class DiskCacheManager {
         const S3ClientAdaptorOption option);
 
     virtual int UmountDiskCache();
-    virtual bool IsCached(const std::string name);
+    virtual bool IsCached(const std::string &name);
 
     /**
      * @brief add obj to cachedObjName
@@ -73,8 +73,7 @@ class DiskCacheManager {
      * @param[in] cacheWriteExist whether the obj is
      *                            exist in cache write
      */
-    void AddCache(const std::string name,
-      bool cacheWriteExist = true);
+    void AddCache(const std::string &name);
 
     int CreateDir();
     std::string GetCacheReadFullDir();
@@ -174,6 +173,7 @@ class DiskCacheManager {
     uint32_t safeRatio_;
     uint64_t maxUsableSpaceBytes_;
     uint64_t maxFileNums_;
+    uint32_t objectPrefix_;
     // used bytes of disk cache
     std::atomic<int64_t> usedBytes_;
     // used ratio of the file system in disk cache

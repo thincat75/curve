@@ -42,7 +42,7 @@ import (
 )
 
 const (
-	updateExample = `$ curve bs update peer 127.0.0.0:8200:0 --logicalpoolid=1 --copysetid=1`
+	peerExample = `$ curve bs update peer 127.0.0.0:8200:0 --logicalpoolid=1 --copysetid=1`
 )
 
 type ResetRpc struct {
@@ -84,7 +84,7 @@ func NewPeerCommand() *cobra.Command {
 		FinalCurveCmd: basecmd.FinalCurveCmd{
 			Use:     "peer",
 			Short:   "update(reset) the peer from the copyset",
-			Example: updateExample,
+			Example: peerExample,
 		},
 	}
 	basecmd.NewFinalCurveCli(&peerCmd.FinalCurveCmd, peerCmd)
@@ -95,8 +95,8 @@ func (pCmd *PeerCommand) AddFlags() {
 	config.AddRpcRetryTimesFlag(pCmd.Cmd)
 	config.AddRpcTimeoutFlag(pCmd.Cmd)
 
-	config.AddBSLogicalPoolIdFlag(pCmd.Cmd)
-	config.AddBSCopysetIdFlag(pCmd.Cmd)
+	config.AddBsLogicalPoolIdRequiredFlag(pCmd.Cmd)
+	config.AddBsCopysetIdRequiredFlag(pCmd.Cmd)
 }
 
 // ParsePeer parse the peer string
@@ -129,21 +129,14 @@ func (pCmd *PeerCommand) Init(cmd *cobra.Command, args []string) error {
 		pCmd.Header, []string{},
 	))
 
-	var err error
 	var e *cmderror.CmdError
 
 	pCmd.opts.Timeout = config.GetFlagDuration(pCmd.Cmd, config.RPCTIMEOUT)
 	pCmd.opts.RetryTimes = config.GetFlagInt32(pCmd.Cmd, config.RPCRETRYTIMES)
 
-	pCmd.copysetID, err = config.GetBsFlagUint32(pCmd.Cmd, config.CURVEBS_COPYSET_ID)
-	if err != nil {
-		return err
-	}
+	pCmd.copysetID = config.GetBsFlagUint32(pCmd.Cmd, config.CURVEBS_COPYSET_ID)
 
-	pCmd.logicalPoolID, err = config.GetBsFlagUint32(pCmd.Cmd, config.CURVEBS_LOGIC_POOL_ID)
-	if err != nil {
-		return err
-	}
+	pCmd.logicalPoolID = config.GetBsFlagUint32(pCmd.Cmd, config.CURVEBS_LOGIC_POOL_ID)
 
 	// parse peer conf
 	if len(args) < 1 {

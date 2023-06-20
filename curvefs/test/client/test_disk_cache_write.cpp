@@ -27,7 +27,6 @@
 #include "curvefs/test/client/mock_client_s3.h"
 #include "curvefs/src/client/s3/disk_cache_write.h"
 #include "curvefs/src/client/s3/client_s3_adaptor.h"
-#include "src/common/concurrent/concurrent.h"
 
 namespace curvefs {
 namespace client {
@@ -67,7 +66,7 @@ class TestDiskCacheWrite : public ::testing::Test {
          std::shared_ptr<SglLRUCache<std::string>> cachedObjName
           = std::make_shared<SglLRUCache<std::string>>
               (0, std::make_shared<CacheMetrics>("diskcache"));
-        diskCacheWrite_->Init(client_, wrapper_, "test", 1, cachedObjName);
+        diskCacheWrite_->Init(client_, wrapper_, "test", 0, 1, cachedObjName);
     }
 
     virtual void TearDown() {
@@ -194,7 +193,6 @@ TEST_F(TestDiskCacheWrite, ReadFile) {
 }
 
 TEST_F(TestDiskCacheWrite, UploadFile) {
-    uint64_t length = 10;
     EXPECT_CALL(*wrapper_, stat(NotNull(), NotNull()))
         .WillOnce(Return(-1));
     std::string fileName = "test";
@@ -320,6 +318,7 @@ TEST_F(TestDiskCacheWrite, UploadAllCacheWriteFile) {
     EXPECT_NE(dir, nullptr);
 
     struct dirent fake;
+    fake.d_type = 8;
     strcpy(fake.d_name, "fake");  // NOLINT
 
     EXPECT_CALL(*wrapper_, stat(NotNull(), NotNull()))
@@ -362,7 +361,9 @@ TEST_F(TestDiskCacheWrite, UploadAllCacheWriteFile_2) {
     EXPECT_NE(dir, nullptr);
 
     struct dirent fake, fake2;
+    fake.d_type = 8;
     strcpy(fake.d_name, "fake");  // NOLINT
+    fake2.d_type = 8;
     strcpy(fake2.d_name, "fake2");  // NOLINT
 
     EXPECT_CALL(*wrapper_, stat(NotNull(), NotNull()))
@@ -458,7 +459,7 @@ TEST_F(TestDiskCacheWrite, AsyncUploadRun) {
     }));
     diskCacheWrite_->AsyncUploadEnqueue("test");
     diskCacheWrite_->AsyncUploadEnqueue("test");
-    int ret = diskCacheWrite_->AsyncUploadRun();
+    (void)diskCacheWrite_->AsyncUploadRun();
     sleep(1);
     diskCacheWrite_->AsyncUploadEnqueue("test");
     std::string t1 = "test";
@@ -519,6 +520,7 @@ TEST_F(TestDiskCacheWrite, UploadFileByInode) {
     LOG(INFO) << "#############case4: no file need to upload, but need other "
                  "upload task finish";
     struct dirent fake;
+    fake.d_type = 8;
     strcpy(fake.d_name, obj1.c_str());  // NOLINT
     EXPECT_CALL(*wrapper_, stat(NotNull(), NotNull()))
         .Times(3)

@@ -60,14 +60,10 @@ int NameSpaceToolCore::DeleteFile(const std::string& fileName,
     return client_->DeleteFile(fileName, forcedelete);
 }
 
-int NameSpaceToolCore::CreateFile(const std::string& fileName,
-                                  uint64_t length,
-                                  bool normalFile,
-                                  uint64_t stripeUnit,
-                                  uint64_t stripeCount) {
-    return client_->CreateFile(fileName, length, normalFile,
-                               stripeUnit, stripeCount);
+int NameSpaceToolCore::CreateFile(const CreateFileContext& ctx) {
+    return client_->CreateFile(ctx);
 }
+
 int NameSpaceToolCore::ExtendVolume(const std::string& fileName,
                                      uint64_t newSize) {
     return client_->ExtendVolume(fileName, newSize);
@@ -203,7 +199,7 @@ int NameSpaceToolCore::UpdateFileThrottle(const std::string& fileName,
     params.set_limit(limit);
     params.set_type(type);
     if (burst >= 0) {
-        if (burst < limit) {
+        if (burst < static_cast<int64_t>(limit)) {
             std::cout << "burst should greater equal to limit" << std::endl;
             return -1;
         }
@@ -253,7 +249,7 @@ int NameSpaceToolCore::QueryChunkCopyset(const std::string& fileName,
         return -1;
     }
     uint64_t chunkIndex = (offset - segOffset) / segment.chunksize();
-    if (chunkIndex >= segment.chunks_size()) {
+    if (static_cast<int64_t>(chunkIndex) >= segment.chunks_size()) {
         std::cout << "ChunkIndex exceed chunks num in segment!" << std::endl;
         return -1;
     }
@@ -264,5 +260,13 @@ int NameSpaceToolCore::QueryChunkCopyset(const std::string& fileName,
     *copyset = std::make_pair(logicPoolId, copysetId);
     return 0;
 }
+
+int NameSpaceToolCore::ListPoolset(std::vector<PoolsetInfo>* poolsets) {
+    assert(poolsets != nullptr);
+    poolsets->clear();
+
+    return client_->ListPoolset(poolsets);
+}
+
 }  // namespace tool
 }  // namespace curve

@@ -27,7 +27,6 @@ import (
 
 	"github.com/gookit/color"
 	cmderror "github.com/opencurve/curve/tools-v2/internal/error"
-	cobrautil "github.com/opencurve/curve/tools-v2/internal/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -93,6 +92,9 @@ const (
 	CURVEFS_DAEMON               = "daemon"
 	VIPER_CURVEFS_DAEMON         = "curvefs.daemon"
 	CURVEFS_DEFAULT_DAEMON       = false
+	CURVEFS_STORAGE              = "storage"
+	VIPER_CURVEFS_STORAGE        = "curvefs.storage"
+	CURVEFS_DEFAULT_STORAGE      = "disk"
 
 	// S3
 	CURVEFS_S3_AK                 = "s3.ak"
@@ -168,7 +170,8 @@ var (
 		CURVEFS_SERVERS:        VIPER_CURVEFS_SERVERS,
 		CURVEFS_FILELIST:       VIPER_CURVEFS_FILELIST,
 		CURVEFS_INTERVAL:       VIPER_CURVEFS_INTERVAL,
-		CURVEFS_DAEMON:			VIPER_CURVEFS_DAEMON,
+		CURVEFS_DAEMON:         VIPER_CURVEFS_DAEMON,
+		CURVEFS_STORAGE:        VIPER_CURVEFS_STORAGE,
 
 		// S3
 		CURVEFS_S3_AK:         VIPER_CURVEFS_S3_AK,
@@ -197,7 +200,8 @@ var (
 		CURVEFS_MARGIN:     CURVEFS_DEFAULT_MARGIN,
 		CURVEFS_SERVERS:    CURVEFS_DEFAULT_SERVERS,
 		CURVEFS_INTERVAL:   CURVEFS_DEFAULT_INTERVAL,
-		CURVEFS_DAEMON:		CURVEFS_DEFAULT_DAEMON,
+		CURVEFS_DAEMON:     CURVEFS_DEFAULT_DAEMON,
+		CURVEFS_STORAGE:    CURVEFS_DEFAULT_STORAGE,
 
 		// S3
 		CURVEFS_S3_AK:         CURVEFS_DEFAULT_S3_AK,
@@ -370,7 +374,7 @@ func GetAddrSlice(cmd *cobra.Command, addrType string) ([]string, *cmderror.CmdE
 	}
 	addrslice := strings.Split(addrsStr, ",")
 	for _, addr := range addrslice {
-		if !cobrautil.IsValidAddr(addr) {
+		if !IsValidAddr(addr) {
 			err := cmderror.ErrGetAddr()
 			err.Format(addrType, addr)
 			return addrslice, err
@@ -756,6 +760,15 @@ func AddDaemonOptionPFlag(cmd *cobra.Command) {
 
 func GetDaemonFlag(cmd *cobra.Command) bool {
 	return GetFlagBool(cmd, CURVEFS_DAEMON)
+}
+
+// storage [option]
+func AddStorageOptionFlag(cmd *cobra.Command) {
+	AddStringOptionFlag(cmd, CURVEFS_STORAGE, "warmup storage type, can be: disk/mem")
+}
+
+func GetStorageFlag(cmd *cobra.Command) string {
+	return GetFlagString(cmd, CURVEFS_STORAGE)
 }
 
 /* required */

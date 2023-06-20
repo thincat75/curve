@@ -26,6 +26,7 @@
 #include <vector>
 #include <memory>
 #include <functional>
+#include <string>
 #include <map>
 
 #include "src/mds/topology/topology.h"
@@ -49,18 +50,18 @@ enum class ChoosePoolPolicy {
 class ChunkFilePoolAllocHelp {
  public:
     ChunkFilePoolAllocHelp()
-    : ChunkFilePoolPoolWalReserve(0),
-      useChunkFilepool(false),
-      useChunkFilePoolAsWalPool(false) {}
+        : useChunkFilepool(false), useChunkFilePoolAsWalPool(false),
+          ChunkFilePoolPoolWalReserve(0) {}
     ~ChunkFilePoolAllocHelp() {}
-    void UpdateChunkFilePoolAllocConfig(bool useChunkFilepool_,
-        bool useChunkFilePoolAsWalPool_,
-        uint32_t useChunkFilePoolAsWalPoolReserve_)  {
+    void
+    UpdateChunkFilePoolAllocConfig(bool useChunkFilepool_,
+                                   bool useChunkFilePoolAsWalPool_,
+                                   uint32_t useChunkFilePoolAsWalPoolReserve_) {
         useChunkFilepool.store(useChunkFilepool_, std::memory_order_release);
         useChunkFilePoolAsWalPool.store(useChunkFilePoolAsWalPool_,
-            std::memory_order_release);
+                                        std::memory_order_release);
         ChunkFilePoolPoolWalReserve.store(useChunkFilePoolAsWalPoolReserve_,
-            std::memory_order_release);
+                                          std::memory_order_release);
     }
     bool GetUseChunkFilepool() {
         return useChunkFilepool.load(std::memory_order_acquire);
@@ -68,8 +69,8 @@ class ChunkFilePoolAllocHelp {
     // After removing the reserved space, the remaining percentage
     uint32_t GetAvailable() {
         if (useChunkFilePoolAsWalPool.load(std::memory_order_acquire)) {
-            return 100 - ChunkFilePoolPoolWalReserve.load(
-                    std::memory_order_acquire);
+            return 100 -
+                   ChunkFilePoolPoolWalReserve.load(std::memory_order_acquire);
         } else {
             return 100;
         }
@@ -80,7 +81,7 @@ class ChunkFilePoolAllocHelp {
     std::atomic<bool> useChunkFilepool;
     std::atomic<bool> useChunkFilePoolAsWalPool;
     // Reserve extra space for walpool
-    std::atomic<uint32_t>  ChunkFilePoolPoolWalReserve;
+    std::atomic<uint32_t> ChunkFilePoolPoolWalReserve;
 };
 
 class TopologyChunkAllocator {
@@ -89,17 +90,21 @@ class TopologyChunkAllocator {
     virtual ~TopologyChunkAllocator() {}
     virtual bool AllocateChunkRandomInSingleLogicalPool(
         ::curve::mds::FileType fileType,
+        const std::string& pstName,
         uint32_t chunkNumer,
         ChunkSizeType chunkSize,
         std::vector<CopysetIdInfo> *infos) = 0;
     virtual bool AllocateChunkRoundRobinInSingleLogicalPool(
         ::curve::mds::FileType fileType,
+        const std::string &pstName,
         uint32_t chunkNumer,
         ChunkSizeType chunkSize,
         std::vector<CopysetIdInfo> *infos) = 0;
     virtual void GetRemainingSpaceInLogicalPool(
         const std::vector<PoolIdType>& logicalPools,
-        std::map<PoolIdType, double>* remianingSpace) = 0;
+        std::map<PoolIdType, double>* remianingSpace,
+        const std::string& pstName) = 0;
+
     virtual void UpdateChunkFilePoolAllocConfig(
         bool useChunkFilepool_, bool useChunkFilePoolAsWalPool_,
         uint32_t useChunkFilePoolAsWalPoolReserve_) = 0;
@@ -107,18 +112,18 @@ class TopologyChunkAllocator {
 
 class TopologyChunkAllocatorImpl : public TopologyChunkAllocator {
  public:
-    TopologyChunkAllocatorImpl(std::shared_ptr<Topology> topology,
+    TopologyChunkAllocatorImpl(
+        std::shared_ptr<Topology> topology,
         std::shared_ptr<AllocStatistic> allocStatistic,
         std::shared_ptr<TopologyStat> topologyStat,
         std::shared_ptr<ChunkFilePoolAllocHelp> ChunkFilePoolAllocHelp,
         const TopologyOption &option)
-        : topology_(topology),
-        allocStatistic_(allocStatistic),
-        topoStat_(topologyStat),
-        chunkFilePoolAllocHelp_(ChunkFilePoolAllocHelp),
-        available_(option.PoolUsagePercentLimit),
-        policy_(static_cast<ChoosePoolPolicy>(option.choosePoolPolicy)),
-        enableLogicalPoolStatus_(option.enableLogicalPoolStatus) {
+        : topology_(topology), allocStatistic_(allocStatistic),
+          available_(option.PoolUsagePercentLimit),
+          topoStat_(topologyStat),
+          chunkFilePoolAllocHelp_(ChunkFilePoolAllocHelp),
+          policy_(static_cast<ChoosePoolPolicy>(option.choosePoolPolicy)),
+          enableLogicalPoolStatus_(option.enableLogicalPoolStatus) {
         std::srand(std::time(nullptr));
     }
     ~TopologyChunkAllocatorImpl() {}
@@ -137,6 +142,7 @@ class TopologyChunkAllocatorImpl : public TopologyChunkAllocator {
      */
     bool AllocateChunkRandomInSingleLogicalPool(
         curve::mds::FileType fileType,
+        const std::string& pstName,
         uint32_t chunkNumber,
         ChunkSizeType chunkSize,
         std::vector<CopysetIdInfo> *infos) override;
@@ -154,12 +160,15 @@ class TopologyChunkAllocatorImpl : public TopologyChunkAllocator {
      */
     bool AllocateChunkRoundRobinInSingleLogicalPool(
         curve::mds::FileType fileType,
+        const std::string &pstName,
         uint32_t chunkNumber,
         ChunkSizeType chunkSize,
         std::vector<CopysetIdInfo> *infos) override;
     void GetRemainingSpaceInLogicalPool(
         const std::vector<PoolIdType>& logicalPools,
-        std::map<PoolIdType, double>* remianingSpace) override;
+        std::map<PoolIdType, double>* remianingSpace,
+        const std::string& pstName) override;
+
     void UpdateChunkFilePoolAllocConfig(bool useChunkFilepool_,
             bool useChunkFilePoolAsWalPool_,
             uint32_t useChunkFilePoolAsWalPoolReserve_) override {
@@ -179,6 +188,7 @@ class TopologyChunkAllocatorImpl : public TopologyChunkAllocator {
      * @retval false if failed
      */
     bool ChooseSingleLogicalPool(curve::mds::FileType fileType,
+        const std::string& pstName,
         PoolIdType *poolOut);
 
  private:
@@ -230,10 +240,8 @@ class AllocateChunkPolicy {
      * @retval false if failed
      */
     static bool AllocateChunkRandomInSingleLogicalPool(
-        std::vector<CopySetIdType> copySetIds,
-        PoolIdType logicalPoolId,
-        uint32_t chunkNumber,
-        std::vector<CopysetIdInfo> *infos);
+        std::vector<CopySetIdType> copySetIds, PoolIdType logicalPoolId,
+        uint32_t chunkNumber, std::vector<CopysetIdInfo> *infos);
 
     /**
      * @brief allocate chunks by round robin in a single logical pool
@@ -253,10 +261,8 @@ class AllocateChunkPolicy {
      * @retval false if failed
      */
     static bool AllocateChunkRoundRobinInSingleLogicalPool(
-        std::vector<CopySetIdType> copySetIds,
-        PoolIdType logicalPoolId,
-        uint32_t *nextIndex,
-        uint32_t chunkNumber,
+        std::vector<CopySetIdType> copySetIds, PoolIdType logicalPoolId,
+        uint32_t *nextIndex, uint32_t chunkNumber,
         std::vector<CopysetIdInfo> *infos);
 
     /**
@@ -281,11 +287,10 @@ class AllocateChunkPolicy {
      * @retval true if succeeded
      * @retval false if failed
      */
-    static bool ChooseSingleLogicalPoolRandom(
-        const std::vector<PoolIdType> &pools,
-        PoolIdType *poolIdOut);
+    static bool
+    ChooseSingleLogicalPoolRandom(const std::vector<PoolIdType> &pools,
+                                  PoolIdType *poolIdOut);
 };
-
 
 
 }  // namespace topology
