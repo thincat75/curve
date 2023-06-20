@@ -56,6 +56,28 @@ class FilePool;
 class CSSnapshot;
 struct DataStoreMetric;
 
+#define CLONEINFOS_VECTOR_SIZE 16
+struct CloneInfos {
+    uint64_t cloneNo;
+    uint64_t cloneSn;
+
+    CloneInfos() {}
+
+    CloneInfos(uint64_t no, uint64_t sn) {
+        cloneNo = no;
+        cloneSn = sn;
+    }
+};
+
+struct CloneContext {
+    ChunkID rootId;
+    uint64_t cloneNo;
+    ChunkID virtualId;
+    std::vector<struct CloneInfos> clones;
+};
+
+using CloneContextPtr = std::unique_ptr<struct CloneContext>;
+
 /**
  * Chunkfile Metapage Format
  * version: 1 byte
@@ -81,6 +103,8 @@ struct ChunkFileMetaPage {
     ChunkFileMetaPage() : version(FORMAT_VERSION)
                         , sn(0)
                         , correctedSn(0)
+                        , cloneNo(0)
+                        , virtualId(0)
                         , location("")
                         , bitmap(nullptr) {}
     ChunkFileMetaPage(const ChunkFileMetaPage& metaPage);
@@ -88,6 +112,16 @@ struct ChunkFileMetaPage {
 
     void encode(char* buf);
     CSErrorCode decode(const char* buf);
+
+    // if it is a clone chunk the cloneNo indicate the clone no in the root chunk
+    // if it is not a clone chunk, then the cloneNo = 0
+    // if it a clone chunk then the virtualId indicate that the chunkid of the root
+    uint64_t cloneNo;
+    ChunkID  virtualId;
+
+    //just remember the snap vector Ctx of the ChunkFile
+    std::vector<SequenceNum> snapCtx; 
+
 };
 
 struct ChunkOptions {
@@ -112,6 +146,9 @@ struct ChunkOptions {
     // datastore internal statistical metric
     std::shared_ptr<DataStoreMetric> metric;
 
+    uint64_t        cloneNo;
+    ChunkID         virtualId;
+
     ChunkOptions() : id(0)
                    , sn(0)
                    , correctedSn(0)
@@ -119,6 +156,8 @@ struct ChunkOptions {
                    , location("")
                    , chunkSize(0)
                    , pageSize(0)
+                   , cloneNo(0)
+                   , virtualId (0)
                    , metric(nullptr) {}
 };
 
@@ -243,6 +282,43 @@ class CSChunkFile {
     CSErrorCode GetHash(off_t offset,
                         size_t length,
                         std::string *hash);
+
+    uint64_t getCloneNumber() {
+        return metaPage_.cloneNo;
+    }
+
+    ChunkID getVirtualId() {
+        return metaPage_.virtualId;
+    }
+
+    int writeDataDirect(const char* buf, off_t offset, size_t length) {
+        return writeData(buf, offset, length);
+    }
+
+    CSErrorCode Flush() {
+        return flush();
+    }
+    
+    bool DivideObjInfoByIndex (SequenceNum sn, 
+                        std::vector<BitRange>& range, 
+                        std::vector<BitRange>& notInRanges, 
+                        std::vector<ObjectInfo>& objInfos);
+
+    bool DivideSnapshotObjInfoByIndex (SequenceNum sn, 
+                        std::vector<BitRange>& range, 
+                        std::vector<BitRange>& notInRanges, 
+                        std::vector<ObjectInfo>& objInfos);
+
+    CSErrorCode ReadSpecifiedSnap (SequenceNum sn, 
+                        CSSnapshot* snap, 
+                        char* buff, 
+                        off_t offset, 
+                        size_t length);
+
+    bool need_Cow(SequenceNum sn, std::shared_ptr<SnapContext> ctx) {
+        return needCow(sn, ctx);
+    }
+
 
  private:
      /**
