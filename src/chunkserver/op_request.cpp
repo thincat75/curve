@@ -406,6 +406,7 @@ static void ReadBufferDeleter(void* ptr) {
 }
 
 void ReadChunkRequest::ReadChunk() {
+    CSErrorCode ret = CSErrorCode::Success;
     char *readBuffer = nullptr;
     size_t size = request_->size();
 
@@ -413,11 +414,34 @@ void ReadChunkRequest::ReadChunk() {
     CHECK(nullptr != readBuffer)
         << "new readBuffer failed " << strerror(errno);
 
-    auto ret = datastore_->ReadChunk(request_->chunkid(),
+    if (false == request_->has_cloneno()) {
+        ret = datastore_->ReadChunk(request_->chunkid(),
                                      request_->sn(),
                                      readBuffer,
                                      request_->offset(),
                                      size);
+    } else {
+        //now get the clone about parameter to the context
+        std::unique_ptr<struct CloneContext> ctx(new CloneContext());
+
+        ctx->cloneNo = request_->cloneno();
+        ctx->rootId = request_->originchunkid();
+        ctx->clones.reserve(CLONEINFOS_VECTOR_SIZE);
+        for (int i = 0; i < request_->clones_size(); i++) {
+            uint64_t tno = request_->clones(i).cloneno();
+            uint64_t tsn = request_->clones(i).clonesn();
+            struct CloneInfos cfo(tno, tsn);
+            ctx->clones.push_back(cfo);
+        }
+
+        ret = datastore_->ReadChunk(request_->chunkid(),
+                                        request_->sn(),
+                                        readBuffer,
+                                        request_->offset(),
+                                        size,
+                                        ctx);
+    }
+
     butil::IOBuf wrapper;
     wrapper.append_user_data(readBuffer, size, ReadBufferDeleter);
     if (CSErrorCode::Success == ret) {
@@ -449,6 +473,7 @@ void ReadChunkRequest::ReadChunk() {
 
 void WriteChunkRequest::OnApply(uint64_t index,
                                 ::google::protobuf::Closure *done) {
+    CSErrorCode ret = CSErrorCode::Success;
     brpc::ClosureGuard doneGuard(done);
     uint32_t cost;
 
@@ -459,7 +484,8 @@ void WriteChunkRequest::OnApply(uint64_t index,
                             request_->clonefileoffset());
     }
 
-    auto ret = datastore_->WriteChunk(request_->chunkid(),
+    if (false == request_->has_cloneno()) {
+        ret = datastore_->WriteChunk(request_->chunkid(),
                                       request_->sn(),
                                       cntl_->request_attachment(),
                                       request_->offset(),
@@ -467,6 +493,29 @@ void WriteChunkRequest::OnApply(uint64_t index,
                                       &cost,
                                       std::make_shared<SnapContext>(getSnapIds(request_)),
                                       cloneSourceLocation);
+    } else {
+
+        std::unique_ptr<struct CloneContext> ctx(new CloneContext());
+
+        ctx->cloneNo = request_->cloneno();
+        ctx->rootId = request_->originchunkid();
+        ctx->clones.reserve(CLONEINFOS_VECTOR_SIZE);
+        for (int i = 0; i < request_->clones_size(); i++) {
+            uint64_t tno = request_->clones(i).cloneno();
+            uint64_t tsn = request_->clones(i).clonesn();
+            struct CloneInfos cfo(tno, tsn);
+            ctx->clones.push_back(cfo);
+        }
+
+        ret = datastore_->WriteChunk(request_->chunkid(),
+                                    request_->sn(),
+                                    cntl_->request_attachment(),
+                                    request_->offset(),
+                                    request_->size(),
+                                    &cost,
+                                    std::make_shared<SnapContext>(getSnapIds(request_)),
+                                    ctx);
+    }
 
     if (CSErrorCode::Success == ret) {
         response_->set_status(CHUNK_OP_STATUS::CHUNK_OP_STATUS_SUCCESS);
@@ -524,7 +573,8 @@ void WriteChunkRequest::OnApplyFromLog(std::shared_ptr<CSDataStore> datastore,
                             request.clonefileoffset());
     }
 
-
+    CSErrorCode ret = CSErrorCode::Success;
+    if (false == request.has_cloneno()) {
     auto ret = datastore->WriteChunk(request.chunkid(),
                                      request.sn(),
                                      data,
@@ -533,6 +583,31 @@ void WriteChunkRequest::OnApplyFromLog(std::shared_ptr<CSDataStore> datastore,
                                      &cost,
                                      std::make_shared<SnapContext>(getSnapIds(&request)),
                                      cloneSourceLocation);
+    } else {
+        
+        std::unique_ptr<struct CloneContext> ctx(new CloneContext());
+
+        ctx->cloneNo = request.cloneno();
+        ctx->rootId = request.originchunkid();
+        ctx->clones.reserve(CLONEINFOS_VECTOR_SIZE);
+        for (int i = 0; i < request.clones_size(); i++) {
+            uint64_t tno = request.clones(i).cloneno();
+            uint64_t tsn = request.clones(i).clonesn();
+            struct CloneInfos cfo(tno, tsn);
+            ctx->clones.push_back(cfo);
+        }
+
+        ret = datastore_->WriteChunk(request.chunkid(),
+                                    request.sn(),
+                                    data,
+                                    request.offset(),
+                                    request.size(),
+                                    &cost,
+                                    std::make_shared<SnapContext>(getSnapIds(&request)),
+                                    ctx);
+
+    }
+
      if (CSErrorCode::Success == ret) {
          return;
      } else if (CSErrorCode::BackwardRequestError == ret) {
@@ -563,18 +638,44 @@ void WriteChunkRequest::OnApplyFromLog(std::shared_ptr<CSDataStore> datastore,
 
 void ReadSnapshotRequest::OnApply(uint64_t index,
                                   ::google::protobuf::Closure *done) {
+    CSErrorCode ret = CSErrorCode::Success;
     brpc::ClosureGuard doneGuard(done);
     char *readBuffer = nullptr;
     uint32_t size = request_->size();
     readBuffer = new(std::nothrow)char[size];
     CHECK(nullptr != readBuffer) << "new readBuffer failed, "
                                  << errno << ":" << strerror(errno);
-    auto ret = datastore_->ReadSnapshotChunk(request_->chunkid(),
+    
+    if (false == request_->has_cloneno()) {
+        ret = datastore_->ReadSnapshotChunk(request_->chunkid(),
                                              request_->sn(),
                                              readBuffer,
                                              request_->offset(),
                                              request_->size(),
                                              std::make_shared<SnapContext>(getSnapIds(request_)));
+    } else {
+        std::unique_ptr<CloneContext> ctx(new CloneContext());
+        
+        ctx->cloneNo = request_->cloneno();
+        ctx->rootId = request_->originchunkid();
+        ctx->clones.reserve(CLONEINFOS_VECTOR_SIZE);
+        for (int i = 0; i < request_->clones_size(); i++) {
+            uint64_t tno = request_->clones(i).cloneno();
+            uint64_t tsn = request_->clones(i).clonesn();
+
+            struct CloneInfos cfo(tno, tsn);
+            ctx->clones.push_back(cfo);
+        }
+
+        ret = datastore_->ReadSnapshotChunk(request_->chunkid(),
+                                            request_->sn(),
+                                            readBuffer,
+                                            request_->offset(),
+                                            request_->size(),
+                                            std::make_shared<SnapContext>(getSnapIds(request_)),
+                                            ctx);
+    }
+
     butil::IOBuf wrapper;
     wrapper.append_user_data(readBuffer, size, ReadBufferDeleter);
 

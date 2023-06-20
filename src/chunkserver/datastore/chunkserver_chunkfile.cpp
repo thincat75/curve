@@ -81,6 +81,10 @@ void ChunkFileMetaPage::encode(char* buf) {
     len += sizeof(sn);
     memcpy(buf + len, &correctedSn, sizeof(correctedSn));
     len += sizeof(correctedSn);
+    memcpy(buf + len, &cloneNo, sizeof(cloneNo));
+    len += sizeof(cloneNo);
+    memcpy(buf + len, &rootId, sizeof(rootId));
+    len += sizeof(rootId);
     size_t loc_size = location.size();
     memcpy(buf + len, &loc_size, sizeof(loc_size));
     len += sizeof(loc_size);
@@ -88,6 +92,13 @@ void ChunkFileMetaPage::encode(char* buf) {
     if (loc_size > 0) {
         memcpy(buf + len, location.c_str(), loc_size);
         len += loc_size;
+        uint32_t bits = bitmap->Size();
+        memcpy(buf + len, &bits, sizeof(bits));
+        len += sizeof(bits);
+        size_t bitmapBytes = (bits + 8 - 1) >> 3;
+        memcpy(buf + len, bitmap->GetBitmap(), bitmapBytes);
+        len += bitmapBytes;
+    } else if (bitmap != nullptr) {
         uint32_t bits = bitmap->Size();
         memcpy(buf + len, &bits, sizeof(bits));
         len += sizeof(bits);
@@ -107,6 +118,10 @@ CSErrorCode ChunkFileMetaPage::decode(const char* buf) {
     len += sizeof(sn);
     memcpy(&correctedSn, buf + len, sizeof(correctedSn));
     len += sizeof(correctedSn);
+    memcpy(&cloneNo, buf + len, sizeof(cloneNo));
+    len += sizeof(cloneNo);
+    memcpy(&rootId, buf + len, sizeof(rootId));
+    len += sizeof(rootId);
     size_t loc_size;
     memcpy(&loc_size, buf + len, sizeof(loc_size));
     len += sizeof(loc_size);
@@ -119,6 +134,19 @@ CSErrorCode ChunkFileMetaPage::decode(const char* buf) {
         bitmap = std::make_shared<Bitmap>(bits, buf + len);
         size_t bitmapBytes = (bitmap->Size() + 8 - 1) >> 3;
         len += bitmapBytes;
+    } else if (cloneNo > 0) {
+        uint32_t bits = 0;
+        memcpy(&bits, buf + len, sizeof(bits));
+        len += sizeof(bits);
+        std::cout << "ChunkFileMetaPage::decode bitmap = " << bitmap << std::endl;
+        if (nullptr != bitmap) {
+            int lcount = bitmap->initialize((char*) (buf+len));
+            len += lcount;
+        }  else {
+            bitmap = std::make_shared<Bitmap>(bits, buf + len);
+            size_t bitmapBytes = (bitmap->Size() + 8 - 1) >> 3;
+            len += bitmapBytes;
+        }
     }
     uint32_t crc =  ::curve::common::CRC32(buf, len);
     uint32_t recordCrc;
@@ -161,11 +189,15 @@ CSChunkFile::CSChunkFile(std::shared_ptr<LocalFileSystem> lfs,
     metaPage_.sn = options.sn;
     metaPage_.correctedSn = options.correctedSn;
     metaPage_.location = options.location;
+    metaPage_.rootId = options.rootId;
+    metaPage_.cloneNo = options.cloneNo;
+
     // If location is not empty, it is CloneChunk,
     //     and Bitmap needs to be initialized
-    if (!metaPage_.location.empty()) {
+    if ((!metaPage_.location.empty()) || (0 != metaPage_.cloneNo)) {
         uint32_t bits = size_ / pageSize_;
         metaPage_.bitmap = std::make_shared<Bitmap>(bits);
+        isCloneChunk_ = true;
     }
     if (metric_ != nullptr) {
         metric_->chunkFileCount << 1;
@@ -241,7 +273,8 @@ CSErrorCode CSChunkFile::Open(bool createFile) {
     CSErrorCode errCode = loadMetaPage();
     // After restarting, only after reopening and loading the metapage,
     // can we know whether it is a clone chunk
-    if (!metaPage_.location.empty() && !isCloneChunk_) {
+    // if the cloneNo is not 0, the set the isCloneChunk_
+    if ((!metaPage_.location.empty() || (metaPage_.cloneNo > 0)) && !isCloneChunk_) {
         if (metric_ != nullptr) {
             metric_->cloneChunkCount << 1;
         }
@@ -269,6 +302,7 @@ CSErrorCode CSChunkFile::loadSnapshot(SequenceNum sn) {
     options.chunkSize = size_;
     options.pageSize = pageSize_;
     options.metric = metric_;
+    options.cloneNo = metaPage_.cloneNo;
     CSSnapshot *snapshot_ = new(std::nothrow) CSSnapshot(lfs_,
                                             chunkFilePool_,
                                             options);
@@ -482,6 +516,102 @@ CSErrorCode CSChunkFile::Paste(const char * buf, off_t offset, size_t length) {
     return CSErrorCode::Success;
 }
 
+bool CSChunkFile::DivideObjInfoByIndex (SequenceNum sn, std::vector<BitRange>& range, std::vector<BitRange>& notInRanges, 
+                                        std::vector<ObjectInfo>& objInfos) {
+
+    bool isFinish = false;
+    if (sn > 1) { //sn == 1 , means that it is original chunk, have no snapshot
+        isFinish = DivideSnapshotObjInfoByIndex(sn, range, notInRanges, objInfos);
+        if (true == isFinish) {
+            return true;
+        }
+    }
+
+    if (nullptr == metaPage_.bitmap) { //not bitmap means that this chunk is not clone chunk
+        for (auto& r : notInRanges) {
+            ObjectInfo objInfo;
+            objInfo.sn = sn;
+            objInfo.snapptr = nullptr;
+            objInfo.offset = r.beginIndex << PAGE_SIZE_SHIFT;
+            objInfo.length = (r.endIndex - r.beginIndex + 1) << PAGE_SIZE_SHIFT;
+            objInfos.push_back(objInfo);
+        }
+
+        return true;
+    }
+
+    std::vector<BitRange> setRanges;
+    std::vector<BitRange> clearRanges;
+    std::vector<BitRange> dataRanges;
+
+    if (sn > 1) {
+        dataRanges = notInRanges;
+    } else {
+        dataRanges = range;
+    }
+    
+    notInRanges.clear();
+    for(auto& r : dataRanges) {
+        setRanges.clear();
+        clearRanges.clear();
+
+        metaPage_.bitmap->Divide(r.beginIndex, r.endIndex, &clearRanges, &setRanges);
+        for (auto& tmpc : clearRanges) {
+            notInRanges.push_back (tmpc);
+        }
+
+        for (auto& tmpr : setRanges) {
+            ObjectInfo objInfo;
+            objInfo.sn = sn;
+            objInfo.snapptr = nullptr;
+            objInfo.offset = tmpr.beginIndex << PAGE_SIZE_SHIFT;
+            objInfo.length = (tmpr.endIndex - tmpr.beginIndex + 1) << PAGE_SIZE_SHIFT;
+            objInfos.push_back(objInfo);
+        }
+    }
+
+    if (notInRanges.empty()) {
+        isFinish = true;
+    }
+
+    return isFinish;
+}
+
+bool CSChunkFile::DivideSnapshotObjInfoByIndex (SequenceNum sn, std::vector<BitRange>& range, 
+                                                std::vector<BitRange>& notInRanges, 
+                                                std::vector<ObjectInfo>& objInfos) {
+    return snapshots_->DivideSnapshotObjInfoByIndex(sn, range, notInRanges, objInfos);
+}
+
+//Just read data from specified snapshot
+CSErrorCode CSChunkFile::ReadSpecifiedSnap (SequenceNum sn, CSSnapshot* snap, 
+                                            char* buff, off_t offset, size_t length) {
+
+    CSErrorCode rc;
+
+    if (nullptr == snap) {
+        rc = ReadSpecifiedChunk (sn, buff, offset, length);
+        if (rc != CSErrorCode::Success) {
+            LOG(ERROR) << "Read specified chunk failed."
+                       << "ChunkID: " << chunkId_
+                       << ",chunk sn: " << metaPage_.sn;
+            return rc;
+        }
+    }
+
+    ReadLockGuard readGuard(rwLock_);
+
+    rc = snap->Read(buff, offset, length);
+    if (rc != CSErrorCode::Success) {
+        LOG(ERROR) << "Read specified snapshot failed."
+                   << "ChunkID: " << chunkId_
+                   << ",chunk sn: " << metaPage_.sn;
+        return rc;
+    }
+
+    return CSErrorCode::Success;
+}
+
 CSErrorCode CSChunkFile::Read(char * buf, off_t offset, size_t length) {
     ReadLockGuard readGuard(rwLock_);
     if (!CheckOffsetAndLength(
@@ -559,6 +689,7 @@ CSErrorCode CSChunkFile::ReadSpecifiedChunk(SequenceNum sn,
         return errCode;
     }
 
+    errCode = CSErrorCode::Success;
     off_t readOff;
     size_t readSize;
     // For uncopied extents, read chunk data
