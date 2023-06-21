@@ -395,11 +395,6 @@ CSErrorCode CSDataStore::ReadChunk(ChunkID id,
     //so we need to use the vector clone to get the parent clone chunk
     if (ctx->cloneNo > 0) { 
 
-        chunkFile = metaCache_.Get(id);
-        if (nullptr == chunkFile) {
-            return CSErrorCode::ChunkNotExistError;
-        }
-
         std::vector<File_ObjectInfoPtr> objInfos;
         SplitDataIntoObjs (sn, objInfos, offset, length, ctx);
 
