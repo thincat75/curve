@@ -597,7 +597,7 @@ void WriteChunkRequest::OnApplyFromLog(std::shared_ptr<CSDataStore> datastore,
             ctx->clones.push_back(cfo);
         }
 
-        ret = datastore_->WriteChunk(request.chunkid(),
+        ret = datastore->WriteChunk(request.chunkid(),
                                     request.sn(),
                                     data,
                                     request.offset(),
