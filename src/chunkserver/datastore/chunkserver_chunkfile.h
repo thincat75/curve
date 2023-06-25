@@ -290,6 +290,10 @@ class CSChunkFile {
         return metaPage_.cloneNo;
     }
 
+    ChunkID getRootId() {
+        return metaPage_.rootId;
+    }
+
     int writeDataDirect(const char* buf, off_t offset, size_t length) {
         return writeData(buf, offset, length);
     }

@@ -316,6 +316,8 @@ void CSDataStore::searchChunkForObj (SequenceNum sn,
                     }
 
                     file_objs.push_back(std::move(fobsi));
+
+                    return;
                 }
             }
         }
@@ -1068,7 +1070,7 @@ CSErrorCode CSDataStore::loadChunkFile(ChunkID id) {
 
         uint64_t cloneno = chunkFilePtr->getCloneNumber();
         if (cloneno > 0) {
-            auto tmpptr = cloneCache_.Set(id, cloneno, chunkFilePtr);
+            auto tmpptr = cloneCache_.Set(chunkFilePtr->getRootId(), cloneno, chunkFilePtr);
             assert (tmpptr == chunkFilePtr);
         }
     }

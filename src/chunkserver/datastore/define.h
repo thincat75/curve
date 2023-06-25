@@ -46,10 +46,14 @@ const SequenceNum kInvalidSeq = 0;
 
 DECLARE_uint32(minIoAlignment);
 
-
+/*
 #define OBJ_SIZE 65536
 #define OBJ_SIZE_SHIFT 16
 #define OBJ_SIZE_MASK 0xFFFF
+*/
+#define OBJ_SIZE 4096
+#define OBJ_SIZE_SHIFT 12
+#define OBJ_SIZE_MASK 0xFFF
 
 #define PAGE_SIZE_SHIFT 12
 #define PAGE_SIZE_MASK 0xFFF
