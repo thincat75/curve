@@ -45,6 +45,9 @@ enum FileStatus {
     kFileCloned = 4;
     // 文件正在被克隆
     kFileBeingCloned = 5;
+
+    // flattening
+    kFileFlattening = 6;
 }
 
 message FileInfo {
@@ -160,6 +163,10 @@ enum  StatusCode {
 
     // epoch too old
     kEpochTooOld = 140;
+    // file status invalid
+    kFileStatusInvalid = 141;
+    // flatten file type invalid
+    kFileTypeInvalid = 142;
 
     // 元数据存储错误
     kStorageError = 501;
@@ -383,6 +390,32 @@ message CloneResponse {
     optional FileInfo fileInfo = 2;
 }
 
+// flatten rpcs
+message FlattenRequest {
+    required string     fileName = 1;
+    required string     owner = 2;
+    optional string     signature = 3;
+    required uint64     date = 4;
+}
+
+message FlattenResponse {
+    required StatusCode statusCode = 1;
+}
+
+// query flatten progress
+message QueryFlattenStatusRequest {
+    required string     fileName = 1;
+    required string     owner = 2;
+    optional string     signature = 3;
+    required uint64     date = 4;
+}
+
+message QueryFlattenStatusResponse {
+    required StatusCode statusCode = 1;
+    optional FileStatus fileStatus = 2;
+    optional uint32 progress = 3;
+}
+
 // session rpcs
 enum SessionStatus {
     kSessionOK = 0;
@@ -600,6 +633,11 @@ service CurveFSService {
     // local clone rpcs
     rpc     Clone(CloneRequest)
                 returns(CloneResponse);
+    // flatten
+    rpc    Flatten(FlattenRequest) returns (FlattenResponse);
+    // query flatten status
+    rpc    QueryFlattenStatus(QueryFlattenStatusRequest)
+                returns (QueryFlattenStatusResponse);
 
     // session rpcs
     rpc     OpenFile(OpenFileRequest) returns (OpenFileResponse);
