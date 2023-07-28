@@ -208,6 +208,8 @@ class MDS {
 
     void InitSnapshotCloneClient();
 
+    void InitFlattenManager();
+
  private:
     // mds configuration items
     std::shared_ptr<Configuration> conf_;
@@ -234,6 +236,8 @@ class MDS {
     char* etcdEndpoints_;
     FileLockManager* fileLockManager_;
     std::shared_ptr<SnapshotCloneClient> snapshotCloneClient_;
+    std::shared_ptr<CopysetClient> copysetClient_;
+    std::shared_ptr<FlattenManager> flattenManager_;
 };
 
 bool ParsePoolsetRules(const std::string& str,

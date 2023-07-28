@@ -135,7 +135,8 @@ bool CurveFS::Init(std::shared_ptr<NameServerStorage> storage,
                 std::shared_ptr<AllocStatistic> allocStatistic,
                 const struct CurveFSOption &curveFSOptions,
                 std::shared_ptr<Topology> topology,
-                std::shared_ptr<SnapshotCloneClient> snapshotCloneClient) {
+                std::shared_ptr<SnapshotCloneClient> snapshotCloneClient,
+                const std::shared_ptr<FlattenManager> &flattenManager) {
     startTime_ = std::chrono::steady_clock::now();
     storage_ = storage;
     InodeIDGenerator_ = InodeIDGenerator;
@@ -152,6 +153,7 @@ bool CurveFS::Init(std::shared_ptr<NameServerStorage> storage,
     maxFileLength_ = curveFSOptions.maxFileLength;
     topology_ = topology;
     snapshotCloneClient_ = snapshotCloneClient;
+    flattenManager_ = flattenManager;
     poolsetRules_ = curveFSOptions.poolsetRules;
 
     InitRootFile();
@@ -450,8 +452,7 @@ StatusCode CurveFS::GetFileInfoWithCloneChain(const std::string & filename,
     FileInfo parentFileInfo;
     auto ret = WalkPath(filename, &parentFileInfo, &lastEntry);
     if (ret != StatusCode::kOK) {
-        if (ret == StatusCode::kNotDirectory) {
-            return StatusCode::kFileNotExists;
+        if (ret == StatusCode::kNotDirectory) { return StatusCode::kFileNotExists;
         }
         return ret;
     } else {
@@ -2106,6 +2107,233 @@ StatusCode CurveFS::LookUpCloneChain(
     return StatusCode::kOK;
 }
 
+// flatten
+StatusCode CurveFS::Flatten(const std::string &fileName,
+        const std::string &owner) {
+    // check the existence of the file
+    FileInfo fileInfo;
+    StatusCode ret = GetFileInfoWithCloneChain(fileName, &fileInfo);
+    if (ret == StatusCode::kFileNotExists) {
+        LOG(WARNING) << "Flatten file not exist, fileName = " << fileName
+                   << ", errCode = " << ret
+                   << ", errName = " << StatusCode_Name(ret);
+        return ret;
+    } else if (ret != StatusCode::kOK) {
+        LOG(ERROR) << "Flatten get file info error, fileName = " << fileName
+                   << ", errCode = " << ret
+                   << ", errName = " << StatusCode_Name(ret);
+        return ret;
+    }
+    
+    // check the owner of the file
+    if (fileInfo.owner() != owner) {
+        LOG(ERROR) << "Flatten owner not match, fileName = " << fileName
+                   << ", owner = " << owner
+                   << ", fileInfo.owner() = " << fileInfo.owner();
+        return StatusCode::kOwnerAuthFail;
+    }
+
+    // check file type
+    if (fileInfo.filetype() != FileType::INODE_CLONE_PAGEFILE) {
+        if (fileInfo.filetype() == FileType::INODE_PAGEFILE) {
+            LOG(WARNING) << "Flatten file already flattened, "
+                << " fileName = " << fileName
+                << ", fileType = " << fileInfo.filetype();
+            return StatusCode::kOK;
+        }
+        LOG(ERROR) << "Flatten file type not match, "
+            << " fileName = " << fileName
+            << ", fileType = " << fileInfo.filetype();
+        return StatusCode::kFileTypeInvalid;
+    }
+    // check file status
+    if (fileInfo.filestatus() != FileStatus::kFileCreated) {
+        if (fileInfo.filestatus() == FileStatus::kFileFlattening) {
+            auto task = flattenManager_->GetFlattenTask(fileInfo.id()); 
+            // not exist, means the task has been finished or resume failed
+            if (task == nullptr) {
+                // get file info again
+                ret = GetFileInfo(fileName, &fileInfo);
+                if (ret != StatusCode::kOK) {
+                    LOG(ERROR) << "Flatten get file info error"
+                               << ", fileName = " << fileName
+                               << ", errCode = " << ret
+                               << ", errName = " << StatusCode_Name(ret);
+                    return ret;
+                }
+                // check file type
+                if (fileInfo.filetype() == FileType::INODE_CLONE_PAGEFILE) {
+                    // contnue to resume flatten job
+                } else {
+                    if (fileInfo.filetype() == FileType::INODE_PAGEFILE) {
+                        LOG(WARNING) << "Flatten file already flattened, "
+                            << " fileName = " << fileName
+                            << ", fileType = " << fileInfo.filetype();
+                        return StatusCode::kOK;
+                    }
+                    LOG(ERROR) << "Flatten file type not match, "
+                        << " fileName = " << fileName
+                        << ", fileType = " << fileInfo.filetype();
+                    return StatusCode::kFileTypeInvalid;
+                }
+            } else {
+                LOG(INFO) << "Flatten file already flattening, "
+                    << " fileName = " << fileName
+                    << ", fileType = " << fileInfo.filetype();
+                // task exist, means the task is running
+                return StatusCode::kOK;
+            }
+        } else {
+            LOG(ERROR) << "Flatten file status invalid, fileName = " << fileName
+                       << ", fileStatus = " << fileInfo.filestatus();
+            return StatusCode::kFileStatusInvalid;
+        }
+    }
+
+    // get origin fileInfo
+    FileInfo originFileInfo;
+    ret = GetFileInfo(fileInfo.cloneorigin(), &originFileInfo);
+    if (ret != StatusCode::kOK) {
+        LOG(ERROR) << "Flatten get origin file info error, fileName = "
+                   << fileName
+                   << ", errCode = " << ret
+                   << ", errName = " << StatusCode_Name(ret);
+        return ret;
+    }
+    // get virtual fileInfo
+    FileInfo virtualFileInfo;
+    ret = GetVirtualCloneVolFileInfo(
+            curve::common::kVirtualCloneVol, &virtualFileInfo);
+    if (ret != StatusCode::kOK) {
+        LOG(ERROR) << "Flatten get virtual clone vol file info error, "
+                   << "fileName = " << fileName
+                   << ", errCode = " << ret
+                   << ", errName = " << StatusCode_Name(ret);
+        return ret;
+    }
+
+    // set file status to flattening
+    fileInfo.set_filestatus(FileStatus::kFileFlattening);
+    // set filename for resume flatten job
+    fileInfo.set_originalfullpathname(fileName);
+    ret = PutFile(fileInfo);
+    if (ret != StatusCode::kOK) {
+        LOG(ERROR) << "Flatten put file error, fileName = " << fileName
+                   << ", errCode = " << ret
+                   << ", errName = " << StatusCode_Name(ret);
+        return ret;
+    }
+
+    // submit to FlattenManager
+    bool success =  flattenManager_->SubmitFlattenJob(
+        fileInfo.id(), fileName, fileInfo, originFileInfo, virtualFileInfo);
+    if (!success) {
+        LOG(ERROR) << "Flatten submit flatten job failed, fileName = "
+                   << fileName
+                   << ", fileId = " << fileInfo.id();
+        return StatusCode::KInternalError;
+    }
+    return StatusCode::kOK;
+}
+
+StatusCode CurveFS::QueryFlattenStatus(const std::string &fileName,
+        const std::string& owner,
+        FileStatus* status,
+        uint32_t* progress) {
+    // check the existence of the file
+    FileInfo fileInfo;
+    StatusCode ret;
+    ret = GetFileInfo(fileName, &fileInfo);
+    if (ret == StatusCode::kFileNotExists) {
+        LOG(WARNING) << "QueryFlattenStatus file not exist, fileName = "
+                   << fileName
+                   << ", errCode = " << ret
+                   << ", errName = " << StatusCode_Name(ret);
+        return ret;
+    } else if (ret != StatusCode::kOK) {
+        LOG(ERROR) << "QueryFlattenStatus get file info error, fileName = "
+                   << fileName
+                   << ", errCode = " << ret
+                   << ", errName = " << StatusCode_Name(ret);
+        return ret;
+    }
+
+    // check the owner of the file
+    if (fileInfo.owner() != owner) {
+        LOG(ERROR) << "QueryFlattenStatus owner not match, fileName = "
+                   << fileName
+                   << ", owner = " << owner
+                   << ", fileInfo.owner() = " << fileInfo.owner();
+        return StatusCode::kOwnerAuthFail;
+    }
+
+    *status = fileInfo.filestatus();
+    *progress = 0;
+
+    // check file type
+    if (fileInfo.filetype() != FileType::INODE_CLONE_PAGEFILE) {
+        if (fileInfo.filetype() == FileType::INODE_PAGEFILE) {
+            *progress = 100;
+            return StatusCode::kOK;
+        }  else {
+            LOG(ERROR) << "QueryFlattenStatus file type not match"
+                << ", fileName = " << fileName
+                << ", fileType = " << fileInfo.filetype();
+            return StatusCode::kFileTypeInvalid;
+        }
+    }
+
+    // check file status
+    if (fileInfo.filestatus() != FileStatus::kFileFlattening) {
+        if (fileInfo.filestatus() == FileStatus::kFileCreated) {
+            LOG(INFO) << "QueryFlattenStatus file status have not begin "
+                      << "flatten, fileName = "
+                      << fileName
+                      << ", fileStatus = " << fileInfo.filestatus();
+            return StatusCode::kOK;
+        } else if (fileInfo.filestatus() == FileStatus::kFileDeleting) {
+            LOG(INFO) << "QueryFlattenStatus file status is deleting"
+                      << ", fileName = " << fileName
+                      << ", fileStatus = " << fileInfo.filestatus();
+            return StatusCode::kFileUnderDeleting;
+        } else {
+            LOG(ERROR) << "QueryFlattenStatus file status invalid, fileName = "
+                       << fileName
+                       << ", fileStatus = " << fileInfo.filestatus();
+            return StatusCode::kFileStatusInvalid;
+        }
+    }
+
+    // get flatten progress
+    auto task = flattenManager_->GetFlattenTask(fileInfo.id()); 
+    // not exist, means the task has been finished
+    if (task == nullptr) {
+        // get file info again
+        ret = GetFileInfo(fileName, &fileInfo);
+        if (ret != StatusCode::kOK) {
+            LOG(ERROR) << "QueryFlattenStatus get file info error, fileName = "
+                       << fileName
+                       << ", errCode = " << ret
+                       << ", errName = " << StatusCode_Name(ret);
+            return ret;
+        }
+        // check file type
+        if (fileInfo.filetype() == FileType::INODE_PAGEFILE) {
+            *status = fileInfo.filestatus();
+            *progress = 100;
+            return StatusCode::kOK;
+        }  else {
+            LOG(ERROR) << "QueryFlattenStatus file type not match"
+                << ", fileName = " << fileName
+                << ", fileType = " << fileInfo.filetype();
+            return StatusCode::kFileTypeInvalid;
+        }
+    }
+
+    *progress = task->GetProgress();
+    return StatusCode::kOK;
+}
+
 StatusCode CurveFS::OpenFile(const std::string &fileName,
                              const std::string &clientIP,
                              ProtoSession *protoSession,
@@ -2988,6 +3216,67 @@ StatusCode CheckStripeParam(uint64_t segmentSize,
     }
 
     return StatusCode::kOK;
+}
+
+bool CurveFS::ResumeFlattenJob() {
+    // get virtual fileInfo
+    FileInfo virtualFileInfo;
+    StatusCode ret = GetVirtualCloneVolFileInfo(
+            curve::common::kVirtualCloneVol, &virtualFileInfo);
+    if (ret != StatusCode::kOK) {
+        LOG(ERROR) << "Flatten get virtual clone vol file info error, "
+                   << ", errCode = " << ret
+                   << ", errName = " << StatusCode_Name(ret);
+        return false;
+    }
+
+    // load task from storage
+    std::vector<FileInfo> fileInfos;
+    StoreStatus storageRet = storage_->LoadFileInfos(&fileInfos);
+    if (storageRet != StoreStatus::OK) {
+        LOG(ERROR) << "load fileInfos from storage failed, ret = " << ret;
+        return false;
+    }
+    
+    bool success = true;
+    // submit task
+    for (auto fileInfo : fileInfos) {
+        if ((fileInfo.filetype() == FileType::INODE_CLONE_PAGEFILE) &&
+            (fileInfo.filestatus() == FileStatus::kFileFlattening)) {
+            std::string fileName = fileInfo.originalfullpathname();
+            FileInfo fileInfoNew = fileInfo;
+             ret = LookUpCloneChain(fileInfo, &fileInfoNew);
+            if (ret != StatusCode::kOK) {
+                LOG(ERROR) << "Flatten look up clone chain error, "
+                           << "fileName = " << fileName
+                           << ", errCode = " << ret
+                           << ", errName = " << StatusCode_Name(ret);
+                success = false;
+                continue;
+            }
+            FileInfo originFileInfo;
+            ret = GetFileInfo(fileInfo.cloneorigin(), &originFileInfo);
+            if (ret != StatusCode::kOK) {
+                LOG(ERROR) << "Flatten get origin file info error, fileName = "
+                           << fileName
+                           << ", errCode = " << ret
+                           << ", errName = " << StatusCode_Name(ret);
+                success = false;
+                continue;
+            }
+            bool success =  flattenManager_->SubmitFlattenJob(
+                fileInfo.id(), fileName, 
+                fileInfoNew, originFileInfo, virtualFileInfo);
+            if (!success) {
+                LOG(ERROR) << "Flatten submit flatten job failed, fileName = "
+                           << fileName
+                           << ", fileId = " << fileInfo.id();
+                success = false;
+                continue;
+            }
+        }
+    }
+    return success;
 }
 
 CurveFS &kCurveFS = CurveFS::GetInstance();
