@@ -357,6 +357,29 @@ class PasteChunkInternalRequest : public ChunkOpRequest {
     butil::IOBuf data_;
 };
 
+
+class FlattenChunkRequest : public ChunkOpRequest {
+ public:
+    FlattenChunkRequest() :
+        ChunkOpRequest() {}
+    FlattenChunkRequest(std::shared_ptr<CopysetNode> nodePtr,
+                      RpcController *cntl,
+                      const ChunkRequest *request,
+                      ChunkResponse *response,
+                      ::google::protobuf::Closure *done);
+    virtual ~FlattenChunkRequest() = default;
+
+    void OnApply(uint64_t index, ::google::protobuf::Closure *done);
+    void OnApplyFromLog(std::shared_ptr<CSDataStore> datastore,
+                        const ChunkRequest &request,
+                        const butil::IOBuf &data) override;
+ private:
+
+    // 并发模块
+    ConcurrentApplyModule* concurrentApplyModule_;
+
+};
+
 }  // namespace chunkserver
 }  // namespace curve
 
