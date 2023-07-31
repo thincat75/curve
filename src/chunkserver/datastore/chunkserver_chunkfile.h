@@ -232,6 +232,10 @@ class CSChunkFile {
                         CSDataStore& datastore,
                         std::shared_ptr<SnapContext> ctx = nullptr);
 
+    CSErrorCode flattenWrite(SequenceNum sn,
+                        std::unique_ptr<CloneContext>& cloneCtx,
+                        CSDataStore& datastore);
+
 
     CSErrorCode Sync();
 
@@ -346,6 +350,11 @@ class CSChunkFile {
     CSErrorCode writeDataDirect(const butil::IOBuf& buf, off_t offset, size_t length); 
 
     bool DivideObjInfoByIndex (SequenceNum sn, 
+                        std::vector<BitRange>& range, 
+                        std::vector<BitRange>& notInRanges, 
+                        std::vector<ObjectInfo>& objInfos);
+
+    bool DivideObjInfoByIndexLockless (SequenceNum sn, 
                         std::vector<BitRange>& range, 
                         std::vector<BitRange>& notInRanges, 
                         std::vector<ObjectInfo>& objInfos);

@@ -365,6 +365,9 @@ class CSDataStore {
                                 std::shared_ptr<SnapContext> ctx, 
                                 std::unique_ptr<CloneContext>& cloneCtx);
 
+    //FlattenChunk interface for the clone chunk
+    CSErrorCode FlattenChunk (ChunkID id, SequenceNum sn,
+                              std::unique_ptr<CloneContext>& cloneCtx);
 
     virtual CSErrorCode SyncChunk(ChunkID id);
 
@@ -466,7 +469,8 @@ class CSDataStore {
                             std::vector<File_ObjectInfoPtr>& objInfos, 
                             uint32_t beginIndex, uint32_t endIndex, 
                             std::unique_ptr<CloneContext>& ctx,
-                            CSDataStore& datastore);
+                            CSDataStore& datastore,
+                            bool isWrite);
 
     CSChunkFilePtr GetCloneCache(ChunkID virtualid, uint64_t cloneno);
 
@@ -477,7 +481,8 @@ class CSDataStore {
                             off_t offset, 
                             size_t length,
                             std::unique_ptr<CloneContext>& ctx,
-                            CSDataStore& datastore);
+                            CSDataStore& datastore,
+                            bool isWrite = false);
 
 
     CSErrorCode CreateChunkFile(const ChunkOptions & ops,
