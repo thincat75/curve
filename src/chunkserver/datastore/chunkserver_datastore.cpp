@@ -601,7 +601,8 @@ CSErrorCode CSDataStore::FlattenChunk (ChunkID id, SequenceNum sn,
         options.sn = sn;
         options.baseDir = baseDir_;
         options.chunkSize = chunkSize_;
-        options.pageSize = pageSize_;
+        options.blockSize = blockSize_;
+        options.metaPageSize = metaPageSize_;
         options.metric = metric_;
         options.cloneNo = cloneCtx->cloneNo;
         options.virtualId = cloneCtx->virtualId;
