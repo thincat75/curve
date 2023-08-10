@@ -178,16 +178,23 @@ CSChunkFilePtr CSDataStore::GetCloneCache(ChunkID virtualid, uint64_t cloneno) {
     return cloneCache_.Get(virtualid, cloneno);
 }
 
-struct CloneInfos CSDataStore::getParentClone (std::vector<struct CloneInfos>& clones, uint64_t cloneNo) {
+struct CloneInfos getParentClone (std::vector<struct CloneInfos>& clones, uint64_t cloneNo) {
     struct CloneInfos prev_clone;
+
     //use iterator to traverse the vector
-    prev_clone = *clones.begin();
     for (auto it = clones.begin(); it != clones.end(); it++) {
         if (it->cloneNo == cloneNo) {
+            if (it == clones.begin()) {
+                prev_clone = *clones.begin();
+                prev_clone.cloneNo = 0;
+            }
             return prev_clone;
         }
         prev_clone = *it;
     }
+
+    prev_clone = *clones.begin();
+    prev_clone.cloneNo = 0;
 
     return prev_clone;
 }
