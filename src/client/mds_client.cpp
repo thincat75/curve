@@ -680,7 +680,8 @@ LIBCURVE_ERROR MDSClient::GetSnapshotSegmentInfo(const std::string& filename,
             ChunkID chunkid = pfs.chunks(i).chunkid();
             CopysetID copysetid = pfs.chunks(i).copysetid();
             segInfo->lpcpIDInfo.cpidVec.push_back(copysetid);
-            segInfo->chunkvec.emplace_back(chunkid, logicpoolid, copysetid);
+            segInfo->chunkvec.emplace_back(chunkid, logicpoolid, copysetid,
+                pfs.cloneorigin(), pfs.originfileid());
             DVLOG(9) << "chunk id: " << chunkid << " pool id: " << logicpoolid
                     << " copyset id: " << copysetid << " chunk id: " << chunkid;
         }
@@ -1115,7 +1116,7 @@ LIBCURVE_ERROR MDSClient::GetOrAllocateSegment(bool allocate, uint64_t offset,
             CopysetID copysetid = pfs.chunks(i).copysetid();
             segInfo->lpcpIDInfo.cpidVec.push_back(copysetid);
             segInfo->chunkvec.emplace_back(chunkid, logicpoolid, copysetid, 
-                pfs.cloneorigin());
+                pfs.cloneorigin(), pfs.originfileid());
         }
         return LIBCURVE_ERROR::OK;
     };
