@@ -178,6 +178,7 @@ CSChunkFilePtr CSDataStore::GetCloneCache(ChunkID virtualid, uint64_t cloneno) {
     return cloneCache_.Get(virtualid, cloneno);
 }
 
+//for search from small to big
 struct CloneInfos CSDataStore::getParentClone (std::vector<struct CloneInfos>& clones, uint64_t cloneNo) {
     struct CloneInfos prev_clone;
 
@@ -197,6 +198,33 @@ struct CloneInfos CSDataStore::getParentClone (std::vector<struct CloneInfos>& c
     prev_clone.cloneNo = 0;
 
     return prev_clone;
+}
+
+//for search from big to small
+struct CloneInfos CSDataStore::getParentClone (std::vector<struct CloneInfos>& clones, std::vector<struct CloneInfos>::iterator& ptr) {
+    struct CloneInfos parent_clone;
+    std::vector<struct CloneInfos>::iterator ptr_next;
+
+    //if the ptr is the end of the vector, return build a clone with cloneNo = 0, means no parent
+    if (ptr == clones.end()) {
+        parent_clone.cloneNo = 0;
+        return parent_clone;
+    } else {
+        ptr++;
+        
+        if (ptr == clones.end()) {
+            parent_clone.cloneNo = 0;
+            return parent_clone;
+        } else {
+            parent_clone = *ptr;
+            ptr_next = std::next(ptr, 1);
+            if ((ptr_next == clones.end()) && (parent_clone.cloneNo != 0)) {
+                parent_clone.cloneNo = 0;
+            }
+        }
+    }
+
+    return parent_clone;
 }
 
 // searchChunkForObj is a func to search the obj to find the obj in < chunkfile, sn, snapshot>
@@ -225,6 +253,7 @@ void CSDataStore::searchChunkForObj (SequenceNum sn,
     uint64_t cloneParentNo = 0;
     uint64_t cloneNo = ctx->cloneNo;
     struct CloneInfos tmpclone;
+    std::vector<struct CloneInfos>::iterator it_index = ctx->clones.begin();
 
     if (0 != ctx->cloneNo) {
         if (0 != ctx->rootId) {
@@ -235,7 +264,8 @@ void CSDataStore::searchChunkForObj (SequenceNum sn,
         cloneFile = datastore.GetCloneCache(ctx->virtualId, ctx->cloneNo);
         selfPtr = cloneFile;
         while (nullptr == cloneFile) {
-            tmpclone = getParentClone (ctx->clones, cloneNo);
+            //tmpclone = getParentClone (ctx->clones, cloneNo);
+            tmpclone = getParentClone (ctx->clones, it_index);
             cloneParentNo = tmpclone.cloneNo;
             cloneSn = tmpclone.cloneSn;
             cloneNo = cloneParentNo;
@@ -303,7 +333,8 @@ void CSDataStore::searchChunkForObj (SequenceNum sn,
             cloneFile = nullptr;
             struct CloneInfos tmpclone;
             while (nullptr == cloneFile) {
-                tmpclone = getParentClone (ctx->clones, cloneNo);
+                //tmpclone = getParentClone (ctx->clones, cloneNo);
+                tmpclone = getParentClone(ctx->clones, it_index);
                 cloneParentNo = tmpclone.cloneNo;
                 cloneSn = tmpclone.cloneSn;
                 cloneNo = cloneParentNo;
@@ -844,6 +875,19 @@ CSErrorCode CSDataStore::GetChunkInfo(ChunkID id,
         return CSErrorCode::ChunkNotExistError;
     }
     chunkFile->GetInfo(chunkInfo);
+    return CSErrorCode::Success;
+}
+
+CSErrorCode CSDataStore::GetCloneInfo(ChunkID id, uint64_t& virtualId, uint64_t& cloneNo) {
+    auto chunkFile = metaCache_.Get(id);
+    if (chunkFile == nullptr) {
+        LOG(INFO) << "Get GetCloneInfo failed, Chunk not exists."
+                  << "ChunkID = " << id;
+        return CSErrorCode::ChunkNotExistError;
+    }
+
+    chunkFile->GetCloneInfo(virtualId, cloneNo);
+
     return CSErrorCode::Success;
 }
 

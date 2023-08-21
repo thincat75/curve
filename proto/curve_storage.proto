@@ -38,3 +38,8 @@ message CurveSnapshotPbAttachMeta {
     };
     repeated File files = 2;
 };
+
+message LocalCloneMeta {
+    required uint64 virtualId = 1;
+    required uint64 cloneNo = 2;
+}

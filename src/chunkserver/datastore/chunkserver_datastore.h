@@ -437,6 +437,7 @@ class CSDataStore {
     virtual CSErrorCode GetChunkInfo(ChunkID id,
                                      CSChunkInfo* chunkInfo);
 
+    CSErrorCode GetCloneInfo(ChunkID id, uint64_t& virtualId, uint64_t& cloneNo);
     /**
      * Get the hash value of Chunk
      * @param id[in]: chunk id
@@ -464,7 +465,7 @@ class CSDataStore {
     virtual ChunkMap GetChunkMap();
 
     static struct CloneInfos getParentClone (std::vector<struct CloneInfos>& clones, uint64_t cloneNo);
-
+    static struct CloneInfos getParentClone (std::vector<struct CloneInfos>& clones, std::vector<struct CloneInfos>::iterator& ptr);
 
     static void searchChunkForObj (SequenceNum sn, 
                             std::vector<File_ObjectInfoPtr>& objInfos, 

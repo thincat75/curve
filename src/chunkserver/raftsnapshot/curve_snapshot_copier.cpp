@@ -69,6 +69,15 @@ void *CurveSnapshotCopier::start_copy(void* arg) {
     return NULL;
 }
 
+struct FileCloneMeta {
+    std::string file;
+    uint64_t    cloneno;
+};
+
+bool compareFileCloneMeta(const FileCloneMeta& meta1, const FileCloneMeta& meta2) {
+    return meta1.cloneno < meta2.cloneno;
+}
+
 void CurveSnapshotCopier::copy() {
     do {
         // 下载snapshot meta中记录的文件
@@ -82,8 +91,37 @@ void CurveSnapshotCopier::copy() {
         }
         std::vector<std::string> files;
         _remote_snapshot.list_files(&files);
+
+        //check that if file has the meta, and get the cloneno and virtualid
+        //use another map <cloneno, file> to sort by cloneno, and get the clonefile list
+
+        std::vector<FileCloneMeta> lfiles;
+
+        lfiles.reserve(files.size());
+
+        for(auto it = files.begin(); it != files.end(); ) {
+            LocalFileMeta fmeta;
+            LocalCloneMeta cloneMeta;
+            FileCloneMeta fcmeta;
+            _remote_snapshot.get_file_meta(*it, &fmeta);
+            if (fmeta.has_user_meta()) {
+                cloneMeta.ParseFromString(fmeta.user_meta());
+                fcmeta.cloneno = cloneMeta.cloneno();
+                fcmeta.file = *it;
+                it = files.erase(it);
+                lfiles.push_back(fcmeta);
+            } else {
+                it++;
+            }
+        }
+        std::sort(lfiles.begin(), lfiles.end(), compareFileCloneMeta);
+
         for (size_t i = 0; i < files.size() && ok(); ++i) {
             copy_file(files[i]);
+        }
+
+        for (size_t i=0; i < lfiles.size() && ok(); ++i) {
+            copy_file(lfiles[i].file);
         }
 
         // 下载snapshot attachment文件
