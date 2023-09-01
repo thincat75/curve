@@ -133,9 +133,11 @@ CSErrorCode CSDataStore::DeleteChunk(ChunkID id, SequenceNum sn, std::shared_ptr
         }
         metaCache_.Remove(id);
         
+        //remove itself from the clone cache
+        cloneCache_.Remove(chunkFile->getVirtualId(), chunkFile->getFileID());
+
         uint64_t cloneno = chunkFile->getCloneNumber();
         if (cloneno > 0) {
-            cloneCache_.Remove(chunkFile->getVirtualId(), cloneno);
             cloneFileMap_.Remove(id);
         }
     }
@@ -260,7 +262,7 @@ void CSDataStore::searchChunkForObj (SequenceNum sn,
 
     if (0 != ctx->cloneNo) {
         if (0 != ctx->rootId) {
-            rootChunkFile = datastore.GetChunkFile(ctx->rootId);
+            rootChunkFile = datastore.GetCloneCache(ctx->virtualId, ctx->rootId);
         } else {
             rootChunkFile = nullptr;
         }
@@ -416,12 +418,13 @@ void CSDataStore::searchChunkForObj (SequenceNum sn,
 
     assert(ctx->cloneNo != 0);
     assert(ctx->clones.size() != 0);
+    assert(ctx->rootId != 0);
 
     cloneFile = datastore.GetCloneCache(ctx->virtualId, ctx->cloneNo);
     selfPtr = cloneFile;
 
     if (0 != ctx->rootId) {
-        rootChunkFile = datastore.GetChunkFile(ctx->rootId);
+        rootChunkFile = datastore.GetCloneCache(ctx->virtualId, ctx->rootId);
     } else {
         rootChunkFile = nullptr;
     }
@@ -605,7 +608,7 @@ CSErrorCode CSDataStore::ReadChunk(ChunkID id,
     CSChunkFilePtr chunkFile = nullptr;
     //if it is clone chunk, means tha the chunkid is the root of clone chunk
     //so we need to use the vector clone to get the parent clone chunk
-    if (ctx->cloneNo > 0) { 
+    if (ctx->rootId > 0) { 
 
         std::vector<File_ObjectInfoPtr> objInfos;
         SplitDataIntoObjs (sn, objInfos, offset, length, ctx, *this);
@@ -738,8 +741,9 @@ CSErrorCode CSDataStore::CreateChunkFile(const ChunkOptions & options,
         // generated chunkFile and uses the previously generated chunkFile
         *chunkFile = metaCache_.Set(options.id, tempChunkFile);
 
+        //insert the chunkfile into the cloneCache_
+        cloneCache_.Set(options.virtualId, options.fileID, tempChunkFile);
         if (options.cloneNo > 0) {
-            cloneCache_.Set(options.virtualId, options.cloneNo, tempChunkFile);
             cloneFileMap_.Insert(options.id, options.cloneNo);
         }
 
@@ -765,6 +769,7 @@ CSErrorCode CSDataStore::FlattenChunk (ChunkID id, SequenceNum sn,
         options.metric = metric_;
         options.cloneNo = cloneCtx->cloneNo;
         options.virtualId = cloneCtx->virtualId;
+        options.fileID = cloneCtx->cloneNo; //the same with the cloneno
         options.enableOdsyncWhenOpenChunkFile = enableOdsyncWhenOpenChunkFile_;
         errorCode = CreateChunkFile(options, &chunkFile);
         if (errorCode != CSErrorCode::Success) {
@@ -787,6 +792,7 @@ CSErrorCode CSDataStore::FlattenChunk (ChunkID id, SequenceNum sn,
 //WriteChunk interface for the clone chunk
 CSErrorCode CSDataStore::WriteChunk (ChunkID id, SequenceNum sn,
                                     const butil::IOBuf& buf, off_t offset, size_t length,
+                                    uint64_t chunkIndex, uint64_t fileID,
                                     uint32_t* cost, std::shared_ptr<SnapContext> ctx, 
                                     std::unique_ptr<CloneContext>& cloneCtx) {
     
@@ -812,7 +818,8 @@ CSErrorCode CSDataStore::WriteChunk (ChunkID id, SequenceNum sn,
         options.metaPageSize = metaPageSize_;
         options.metric = metric_;
         options.cloneNo = cloneCtx->cloneNo;
-        options.virtualId = cloneCtx->virtualId;
+        options.virtualId = cloneCtx->virtualId; //the same with the chunkIndex
+        options.fileID = fileID; //the same with the cloneNo
         options.enableOdsyncWhenOpenChunkFile = enableOdsyncWhenOpenChunkFile_;
         errorCode = CreateChunkFile(options, &chunkFile);
         if (errorCode != CSErrorCode::Success) {
@@ -850,6 +857,8 @@ CSErrorCode CSDataStore::WriteChunk(ChunkID id,
                             const butil::IOBuf& buf,
                             off_t offset,
                             size_t length,
+                            uint64_t chunkIndex,
+                            uint64_t fileID,
                             uint32_t* cost,
                             std::shared_ptr<SnapContext> ctx,
                             const std::string & cloneSourceLocation)  {
@@ -873,6 +882,9 @@ CSErrorCode CSDataStore::WriteChunk(ChunkID id,
         options.metaPageSize = metaPageSize_;
         options.metric = metric_;
         options.enableOdsyncWhenOpenChunkFile = enableOdsyncWhenOpenChunkFile_;
+        options.virtualId = chunkIndex;
+        options.fileID = fileID;
+        options.cloneNo = 0;
         CSErrorCode errorCode = CreateChunkFile(options, &chunkFile);
         if (errorCode != CSErrorCode::Success) {
             return errorCode;
@@ -1053,11 +1065,12 @@ CSErrorCode CSDataStore::loadChunkFile(ChunkID id) {
             return errorCode;
         metaCache_.Set(id, chunkFilePtr);
 
+        auto tmpptr = cloneCache_.Set(chunkFilePtr->getVirtualId(), chunkFilePtr->getFileID(), chunkFilePtr);
+        assert (tmpptr == chunkFilePtr);
+
         uint64_t cloneno = chunkFilePtr->getCloneNumber();
         if (cloneno > 0) {
-            auto tmpptr = cloneCache_.Set(chunkFilePtr->getVirtualId(), cloneno, chunkFilePtr);
             cloneFileMap_.Insert(id, cloneno);
-            assert (tmpptr == chunkFilePtr);
         }
     }
     return CSErrorCode::Success;
