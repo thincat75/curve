@@ -465,6 +465,11 @@ void CSDataStore::searchChunkForObj (SequenceNum sn,
         it_index ++;
 
         if (it_index == ctx->clones.end()) { //it is the rootFile, use the rootFile to process
+            assert(cloneNo > 0);
+            
+            if (0 != cloneNo) {//if the cloneNo is not zero, use the cloneNo to get the rootChunkFile
+                rootChunkFile = datastore.GetCloneCache(ctx->virtualId, cloneNo);
+            }
             break;
         }
 
