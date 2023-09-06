@@ -101,7 +101,7 @@ class CurveFSTest: public ::testing::Test {
                 Return(StoreStatus::OK)));
 
         mockFlattenManager_ = std::make_shared<MockFlattenManager>();
-        curvefs_->Init(storage_, inodeIdGenerator_, 
+        curvefs_->Init(storage_, inodeIdGenerator_,
                         mockChunkAllocator_,
                         mockcleanManager_,
                         fileRecordManager_,
@@ -4279,6 +4279,779 @@ TEST_F(CurveFSTest, ListAllVolumesOnCopyset) {
         .WillOnce(Return(StoreStatus::KeyNotExist));
         ASSERT_EQ(StatusCode::kStorageError,
                     curvefs_->ListVolumesOnCopyset(copysetVec, &fileNames));
+    }
+}
+
+// test clone
+TEST_F(CurveFSTest, Clone) {
+    // walk dst path fail
+    {
+        std::string dstFile1 = "/dir1/dst1";
+        std::string owner1 = "owner1";
+        std::string srcFileName = "/src1";
+        std::string snapName = "snap1";
+        FileInfo dstFileInfo;
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(Return(StoreStatus::InternalError));
+        ASSERT_EQ(StatusCode::kStorageError,
+            curvefs_->Clone(dstFile1, owner1,
+                srcFileName, snapName, &dstFileInfo));
+    }
+    // dst is a dir
+    {
+        std::string dstFile = "/dir1/";
+        std::string owner1 = "owner1";
+        std::string srcFileName = "/src1";
+        std::string snapName = "snap1";
+        FileInfo dstFileInfo;
+        FileInfo dir1FileInfo;
+        dir1FileInfo.set_filetype(FileType::INODE_DIRECTORY);
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(DoAll(SetArgPointee<2>(dir1FileInfo),
+                    Return(StoreStatus::OK)));
+        ASSERT_EQ(StatusCode::kFileExists,
+            curvefs_->Clone(dstFile, owner1,
+                srcFileName, snapName, &dstFileInfo));
+    }
+    // dst is file and exist
+    {
+        std::string dstFile = "/dst1";
+        std::string owner1 = "owner1";
+        std::string srcFileName = "/src1";
+        std::string snapName = "snap1";
+        FileInfo dstFileInfoOut;
+        FileInfo dstFileInfo;
+        dstFileInfo.set_filetype(FileType::INODE_CLONE_PAGEFILE);
+        dstFileInfo.set_initclonesegment(true);
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(DoAll(SetArgPointee<2>(dstFileInfo),
+                    Return(StoreStatus::OK)));
+        ASSERT_EQ(StatusCode::kFileExists,
+            curvefs_->Clone(dstFile, owner1,
+                srcFileName, snapName, &dstFileInfo));
+    }
+    // lookUpFile fail
+    {
+        std::string dstFile1 = "/dst1";
+        std::string owner1 = "owner1";
+        std::string srcFileName = "/src1";
+        std::string snapName = "snap1";
+        FileInfo dstFileInfo;
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(Return(StoreStatus::InternalError));
+        ASSERT_EQ(StatusCode::kStorageError,
+            curvefs_->Clone(dstFile1, owner1,
+                srcFileName, snapName, &dstFileInfo));
+    }
+
+    // GetSnapshotFileInfo fail
+    {
+        std::string dstFile1 = "/dst1";
+        std::string owner1 = "owner1";
+        std::string srcFileName = "/src1";
+        std::string snapName = "snap1";
+        FileInfo dstFileInfo;
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(Return(StoreStatus::KeyNotExist))
+            .WillOnce(Return(StoreStatus::InternalError));
+        ASSERT_EQ(StatusCode::kStorageError,
+            curvefs_->Clone(dstFile1, owner1,
+                srcFileName, snapName, &dstFileInfo));
+    }
+    // snapshot not protected
+    {
+        std::string dstFile1 = "/dst1";
+        std::string owner1 = "owner1";
+        std::string srcFileName = "/src1";
+        std::string snapName = "snap1";
+        FileInfo dstFileInfo;
+        FileInfo srcFileInfo;
+        srcFileInfo.set_filetype(FileType::INODE_CLONE_PAGEFILE);
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(Return(StoreStatus::KeyNotExist))
+            .WillOnce(DoAll(SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)));
+        FileInfo snapshotInfo;
+        snapshotInfo.set_isprotected(false);
+        EXPECT_CALL(*storage_, GetSnapFile(_, _, _))
+            .WillOnce(DoAll(SetArgPointee<2>(snapshotInfo),
+                    Return(StoreStatus::OK)));
+        ASSERT_EQ(StatusCode::kSnapshotFileNotProtected,
+            curvefs_->Clone(dstFile1, owner1,
+                srcFileName, snapName, &dstFileInfo));
+    }
+    // gen inode id fail
+    {
+        std::string dstFile1 = "/dst1";
+        std::string owner1 = "owner1";
+        std::string srcFileName = "/src1";
+        std::string snapName = "snap1";
+        FileInfo dstFileInfo;
+        FileInfo srcFileInfo;
+        srcFileInfo.set_filetype(FileType::INODE_CLONE_PAGEFILE);
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(Return(StoreStatus::KeyNotExist))
+            .WillOnce(DoAll(SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)));
+        FileInfo snapshotInfo;
+        snapshotInfo.set_isprotected(true);
+        EXPECT_CALL(*storage_, GetSnapFile(_, _, _))
+            .WillOnce(DoAll(SetArgPointee<2>(snapshotInfo),
+                    Return(StoreStatus::OK)));
+        EXPECT_CALL(*inodeIdGenerator_, GenInodeID(_))
+            .WillOnce(Return(false));
+        ASSERT_EQ(StatusCode::kStorageError,
+            curvefs_->Clone(dstFile1, owner1,
+                srcFileName, snapName, &dstFileInfo));
+    }
+    // Put Clone File fail
+    {
+        std::string dstFile1 = "/dst1";
+        std::string owner1 = "owner1";
+        std::string srcFileName = "/src1";
+        std::string snapName = "snap1";
+        FileInfo dstFileInfo;
+        FileInfo srcFileInfo;
+        srcFileInfo.set_filetype(FileType::INODE_CLONE_PAGEFILE);
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(Return(StoreStatus::KeyNotExist))
+            .WillOnce(DoAll(SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)));
+        FileInfo snapshotInfo;
+        snapshotInfo.set_isprotected(true);
+        EXPECT_CALL(*storage_, GetSnapFile(_, _, _))
+            .WillOnce(DoAll(SetArgPointee<2>(snapshotInfo),
+                    Return(StoreStatus::OK)));
+        EXPECT_CALL(*inodeIdGenerator_, GenInodeID(_))
+            .WillOnce(Return(true));
+        EXPECT_CALL(*storage_, PutFile(_))
+            .WillOnce(Return(StoreStatus::InternalError));
+        ASSERT_EQ(StatusCode::kStorageError,
+            curvefs_->Clone(dstFile1, owner1,
+                srcFileName, snapName, &dstFileInfo));
+    }
+    // get segment fail
+    constexpr uint64_t segmentSize = 1ULL * 1024 * 1024 * 1024;  // 1GiB
+    constexpr uint64_t chunkSize = 16ULL * 1024 * 1024;          // 16MiB
+    {
+        std::string dstFile1 = "/dst1";
+        std::string owner1 = "owner1";
+        std::string srcFileName = "/src1";
+        std::string snapName = "snap1";
+        FileInfo dstFileInfo;
+        FileInfo srcFileInfo;
+        srcFileInfo.set_filetype(FileType::INODE_CLONE_PAGEFILE);
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(Return(StoreStatus::KeyNotExist))
+            .WillOnce(DoAll(SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)));
+        FileInfo snapshotInfo;
+        snapshotInfo.set_isprotected(true);
+        snapshotInfo.set_length(segmentSize);
+        snapshotInfo.set_segmentsize(segmentSize);
+        snapshotInfo.set_chunksize(chunkSize);
+        EXPECT_CALL(*storage_, GetSnapFile(_, _, _))
+            .WillOnce(DoAll(SetArgPointee<2>(snapshotInfo),
+                    Return(StoreStatus::OK)));
+        EXPECT_CALL(*inodeIdGenerator_, GenInodeID(_))
+            .WillOnce(Return(true));
+        EXPECT_CALL(*storage_, PutFile(_))
+            .WillOnce(Return(StoreStatus::OK));
+        EXPECT_CALL(*storage_, GetSegment(_, _, _))
+            .WillOnce(Return(StoreStatus::InternalError));
+        ASSERT_EQ(StatusCode::kStorageError,
+            curvefs_->Clone(dstFile1, owner1,
+                srcFileName, snapName, &dstFileInfo));
+    }
+    // clone segment fail
+    {
+        std::string dstFile1 = "/dst1";
+        std::string owner1 = "owner1";
+        std::string srcFileName = "/src1";
+        std::string snapName = "snap1";
+        FileInfo dstFileInfo;
+        FileInfo srcFileInfo;
+        srcFileInfo.set_filetype(FileType::INODE_CLONE_PAGEFILE);
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(Return(StoreStatus::KeyNotExist))
+            .WillOnce(DoAll(SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)));
+        FileInfo snapshotInfo;
+        snapshotInfo.set_isprotected(true);
+        snapshotInfo.set_length(segmentSize);
+        snapshotInfo.set_segmentsize(segmentSize);
+        snapshotInfo.set_chunksize(chunkSize);
+        EXPECT_CALL(*storage_, GetSnapFile(_, _, _))
+            .WillOnce(DoAll(SetArgPointee<2>(snapshotInfo),
+                    Return(StoreStatus::OK)));
+        EXPECT_CALL(*inodeIdGenerator_, GenInodeID(_))
+            .WillOnce(Return(true));
+        EXPECT_CALL(*storage_, PutFile(_))
+            .WillOnce(Return(StoreStatus::OK));
+        EXPECT_CALL(*storage_, GetSegment(_, _, _))
+            .WillOnce(Return(StoreStatus::OK));
+        EXPECT_CALL(*mockChunkAllocator_, CloneChunkSegment(_, _, _, _))
+            .WillOnce(Return(false));
+        ASSERT_EQ(StatusCode::kSegmentAllocateError,
+            curvefs_->Clone(dstFile1, owner1,
+                srcFileName, snapName, &dstFileInfo));
+    }
+    // put segment error
+    {
+        std::string dstFile1 = "/dst1";
+        std::string owner1 = "owner1";
+        std::string srcFileName = "/src1";
+        std::string snapName = "snap1";
+        FileInfo dstFileInfo;
+        FileInfo srcFileInfo;
+        srcFileInfo.set_filetype(FileType::INODE_CLONE_PAGEFILE);
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(Return(StoreStatus::KeyNotExist))
+            .WillOnce(DoAll(SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)));
+        FileInfo snapshotInfo;
+        snapshotInfo.set_isprotected(true);
+        snapshotInfo.set_length(segmentSize);
+        snapshotInfo.set_segmentsize(segmentSize);
+        snapshotInfo.set_chunksize(chunkSize);
+        EXPECT_CALL(*storage_, GetSnapFile(_, _, _))
+            .WillOnce(DoAll(SetArgPointee<2>(snapshotInfo),
+                    Return(StoreStatus::OK)));
+        EXPECT_CALL(*inodeIdGenerator_, GenInodeID(_))
+            .WillOnce(Return(true));
+        EXPECT_CALL(*storage_, PutFile(_))
+            .WillOnce(Return(StoreStatus::OK));
+        EXPECT_CALL(*storage_, GetSegment(_, _, _))
+            .WillOnce(Return(StoreStatus::OK));
+        EXPECT_CALL(*mockChunkAllocator_, CloneChunkSegment(_, _, _, _))
+            .WillOnce(Return(true));
+        EXPECT_CALL(*storage_, PutSegment(_, _, _, _))
+            .WillOnce(Return(StoreStatus::InternalError));
+        ASSERT_EQ(StatusCode::kStorageError,
+            curvefs_->Clone(dstFile1, owner1,
+                srcFileName, snapName, &dstFileInfo));
+    }
+    // lookup clone train fail
+    {
+        std::string dstFile1 = "/dst1";
+        std::string owner1 = "owner1";
+        std::string srcFileName = "/src1";
+        std::string snapName = "snap1";
+        FileInfo dstFileInfo;
+        FileInfo srcFileInfo;
+        srcFileInfo.set_filetype(FileType::INODE_CLONE_PAGEFILE);
+        srcFileInfo.set_clonesource("/origin1");
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(Return(StoreStatus::KeyNotExist))
+            .WillOnce(DoAll(SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)))
+            .WillOnce(Return(StoreStatus::InternalError));
+        FileInfo snapshotInfo;
+        snapshotInfo.set_isprotected(true);
+        snapshotInfo.set_length(segmentSize);
+        snapshotInfo.set_segmentsize(segmentSize);
+        snapshotInfo.set_chunksize(chunkSize);
+        EXPECT_CALL(*storage_, GetSnapFile(_, _, _))
+            .WillOnce(DoAll(SetArgPointee<2>(snapshotInfo),
+                    Return(StoreStatus::OK)));
+        EXPECT_CALL(*inodeIdGenerator_, GenInodeID(_))
+            .WillOnce(Return(true));
+        EXPECT_CALL(*storage_, PutFile(_))
+            .WillOnce(Return(StoreStatus::OK));
+        EXPECT_CALL(*storage_, GetSegment(_, _, _))
+            .WillOnce(Return(StoreStatus::OK));
+        EXPECT_CALL(*mockChunkAllocator_, CloneChunkSegment(_, _, _, _))
+            .WillOnce(Return(true));
+        EXPECT_CALL(*storage_, PutSegment(_, _, _, _))
+            .WillOnce(Return(StoreStatus::OK));
+        EXPECT_CALL(*allocStatistic_, AllocSpace(_, _, _));
+        ASSERT_EQ(StatusCode::kStorageError,
+            curvefs_->Clone(dstFile1, owner1,
+                srcFileName, snapName, &dstFileInfo));
+    }
+    // put clone file 2 fail
+    {
+        std::string dstFile1 = "/dst1";
+        std::string owner1 = "owner1";
+        std::string srcFileName = "/src1";
+        std::string snapName = "snap1";
+        FileInfo dstFileInfo;
+        FileInfo srcFileInfo;
+        srcFileInfo.set_filetype(FileType::INODE_CLONE_PAGEFILE);
+        srcFileInfo.set_clonesource("/origin1");
+        FileInfo originFileInfo;
+        originFileInfo.set_filetype(FileType::INODE_PAGEFILE);
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(Return(StoreStatus::KeyNotExist))
+            .WillOnce(DoAll(SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)))
+            .WillOnce(DoAll(SetArgPointee<2>(originFileInfo),
+                    Return(StoreStatus::OK)));
+        FileInfo snapshotInfo;
+        snapshotInfo.set_isprotected(true);
+        snapshotInfo.set_length(segmentSize);
+        snapshotInfo.set_segmentsize(segmentSize);
+        snapshotInfo.set_chunksize(chunkSize);
+        EXPECT_CALL(*storage_, GetSnapFile(_, _, _))
+            .WillOnce(DoAll(SetArgPointee<2>(snapshotInfo),
+                    Return(StoreStatus::OK)));
+        EXPECT_CALL(*inodeIdGenerator_, GenInodeID(_))
+            .WillOnce(Return(true));
+        EXPECT_CALL(*storage_, PutFile(_))
+            .WillOnce(Return(StoreStatus::OK));
+        EXPECT_CALL(*storage_, GetSegment(_, _, _))
+            .WillOnce(Return(StoreStatus::OK));
+        EXPECT_CALL(*mockChunkAllocator_, CloneChunkSegment(_, _, _, _))
+            .WillOnce(Return(true));
+        EXPECT_CALL(*storage_, PutSegment(_, _, _, _))
+            .WillOnce(Return(StoreStatus::OK));
+        EXPECT_CALL(*allocStatistic_, AllocSpace(_, _, _));
+        EXPECT_CALL(*storage_, Put2File(_, _))
+            .WillOnce(Return(StoreStatus::InternalError));
+        ASSERT_EQ(StatusCode::kStorageError,
+            curvefs_->Clone(dstFile1, owner1,
+                srcFileName, snapName, &dstFileInfo));
+    }
+    // clone success
+    {
+        std::string dstFile1 = "/dst1";
+        std::string owner1 = "owner1";
+        std::string srcFileName = "/src1";
+        std::string snapName = "snap1";
+        FileInfo dstFileInfo;
+        FileInfo srcFileInfo;
+        srcFileInfo.set_filetype(FileType::INODE_CLONE_PAGEFILE);
+        srcFileInfo.set_clonesource("/origin1");
+        FileInfo originFileInfo;
+        originFileInfo.set_filetype(FileType::INODE_PAGEFILE);
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(Return(StoreStatus::KeyNotExist))
+            .WillOnce(DoAll(SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)))
+            .WillOnce(DoAll(SetArgPointee<2>(originFileInfo),
+                    Return(StoreStatus::OK)));
+        FileInfo snapshotInfo;
+        snapshotInfo.set_isprotected(true);
+        snapshotInfo.set_length(segmentSize);
+        snapshotInfo.set_segmentsize(segmentSize);
+        snapshotInfo.set_chunksize(chunkSize);
+        EXPECT_CALL(*storage_, GetSnapFile(_, _, _))
+            .WillOnce(DoAll(SetArgPointee<2>(snapshotInfo),
+                    Return(StoreStatus::OK)));
+        EXPECT_CALL(*inodeIdGenerator_, GenInodeID(_))
+            .WillOnce(Return(true));
+        EXPECT_CALL(*storage_, PutFile(_))
+            .WillOnce(Return(StoreStatus::OK));
+        EXPECT_CALL(*storage_, GetSegment(_, _, _))
+            .WillOnce(Return(StoreStatus::OK));
+        EXPECT_CALL(*mockChunkAllocator_, CloneChunkSegment(_, _, _, _))
+            .WillOnce(Return(true));
+        EXPECT_CALL(*storage_, PutSegment(_, _, _, _))
+            .WillOnce(Return(StoreStatus::OK));
+        EXPECT_CALL(*allocStatistic_, AllocSpace(_, _, _));
+        EXPECT_CALL(*storage_, Put2File(_, _))
+            .WillOnce(Return(StoreStatus::OK));
+        ASSERT_EQ(StatusCode::kOK,
+            curvefs_->Clone(dstFile1, owner1,
+                srcFileName, snapName, &dstFileInfo));
+    }
+    // clone snap len is 0
+    {
+        std::string dstFile1 = "/dst1";
+        std::string owner1 = "owner1";
+        std::string srcFileName = "/src1";
+        std::string snapName = "snap1";
+        FileInfo dstFileInfo;
+        FileInfo srcFileInfo;
+        srcFileInfo.set_filetype(FileType::INODE_CLONE_PAGEFILE);
+        srcFileInfo.set_clonesource("/origin1");
+        FileInfo originFileInfo;
+        originFileInfo.set_filetype(FileType::INODE_PAGEFILE);
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(Return(StoreStatus::KeyNotExist))
+            .WillOnce(DoAll(SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)))
+            .WillOnce(DoAll(SetArgPointee<2>(originFileInfo),
+                    Return(StoreStatus::OK)));
+        FileInfo snapshotInfo;
+        snapshotInfo.set_isprotected(true);
+        snapshotInfo.set_length(0);
+        snapshotInfo.set_segmentsize(segmentSize);
+        snapshotInfo.set_chunksize(chunkSize);
+        EXPECT_CALL(*storage_, GetSnapFile(_, _, _))
+            .WillOnce(DoAll(SetArgPointee<2>(snapshotInfo),
+                    Return(StoreStatus::OK)));
+        EXPECT_CALL(*inodeIdGenerator_, GenInodeID(_))
+            .WillOnce(Return(true));
+        EXPECT_CALL(*storage_, PutFile(_))
+            .WillOnce(Return(StoreStatus::OK));
+        EXPECT_CALL(*storage_, Put2File(_, _))
+            .WillOnce(Return(StoreStatus::OK));
+        ASSERT_EQ(StatusCode::kOK,
+            curvefs_->Clone(dstFile1, owner1,
+                srcFileName, snapName, &dstFileInfo));
+    }
+    // clone src is origin
+    {
+        std::string dstFile1 = "/dst1";
+        std::string owner1 = "owner1";
+        std::string srcFileName = "/src1";
+        std::string snapName = "snap1";
+        FileInfo dstFileInfo;
+        FileInfo srcFileInfo;
+        srcFileInfo.set_filetype(FileType::INODE_PAGEFILE);
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(Return(StoreStatus::KeyNotExist))
+            .WillOnce(DoAll(SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)));
+        FileInfo snapshotInfo;
+        snapshotInfo.set_isprotected(true);
+        snapshotInfo.set_length(0);
+        snapshotInfo.set_segmentsize(segmentSize);
+        snapshotInfo.set_chunksize(chunkSize);
+        EXPECT_CALL(*storage_, GetSnapFile(_, _, _))
+            .WillOnce(DoAll(SetArgPointee<2>(snapshotInfo),
+                    Return(StoreStatus::OK)));
+        EXPECT_CALL(*inodeIdGenerator_, GenInodeID(_))
+            .WillOnce(Return(true));
+        EXPECT_CALL(*storage_, PutFile(_))
+            .WillOnce(Return(StoreStatus::OK));
+        EXPECT_CALL(*storage_, Put2File(_, _))
+            .WillOnce(Return(StoreStatus::OK));
+        ASSERT_EQ(StatusCode::kOK,
+            curvefs_->Clone(dstFile1, owner1,
+                srcFileName, snapName, &dstFileInfo));
+    }
+}
+
+TEST_F(CurveFSTest, Flatten) {
+    // get file info fail
+    {
+        std::string fileName = "/clone1";
+        std::string owner1 = "owner1";
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(Return(StoreStatus::InternalError));
+        ASSERT_EQ(StatusCode::kStorageError,
+                curvefs_->Flatten(fileName, owner1));
+    }
+    // get file not exist
+    {
+        std::string fileName = "/clone1";
+        std::string owner1 = "owner1";
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(Return(StoreStatus::KeyNotExist));
+        ASSERT_EQ(StatusCode::kFileNotExists,
+                curvefs_->Flatten(fileName, owner1));
+    }
+    // check owner fail
+    {
+        std::string fileName = "/clone1";
+        std::string owner1 = "owner1";
+        FileInfo fileInfo;
+        fileInfo.set_filetype(FileType::INODE_CLONE_PAGEFILE);
+        fileInfo.set_owner("owner2");
+        fileInfo.set_clonesource("/srcFile");
+        FileInfo srcFileInfo;
+        srcFileInfo.set_filetype(FileType::INODE_PAGEFILE);
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(fileInfo),
+                    Return(StoreStatus::OK)))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)));
+        ASSERT_EQ(StatusCode::kOwnerAuthFail,
+                curvefs_->Flatten(fileName, owner1));
+    }
+    // check file type failed
+    {
+        std::string fileName = "/clone1";
+        std::string owner1 = "owner1";
+        FileInfo fileInfo;
+        fileInfo.set_owner(owner1);
+        fileInfo.set_filetype(FileType::INODE_DIRECTORY);
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(fileInfo),
+                    Return(StoreStatus::OK)));
+        ASSERT_EQ(StatusCode::kFileTypeInvalid,
+                curvefs_->Flatten(fileName, owner1));
+    }
+    // check file status invalid
+    {
+        std::string fileName = "/clone1";
+        std::string owner1 = "owner1";
+        FileInfo fileInfo;
+        fileInfo.set_owner(owner1);
+        fileInfo.set_filetype(FileType::INODE_CLONE_PAGEFILE);
+        fileInfo.set_filestatus(FileStatus::kFileDeleting);
+        fileInfo.set_clonesource("/srcFile");
+        FileInfo srcFileInfo;
+        srcFileInfo.set_filetype(FileType::INODE_PAGEFILE);
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(fileInfo),
+                    Return(StoreStatus::OK)))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)));
+        ASSERT_EQ(StatusCode::kFileStatusInvalid,
+                curvefs_->Flatten(fileName, owner1));
+    }
+    // check file status already flattening
+    {
+        std::string fileName = "/clone1";
+        std::string owner1 = "owner1";
+        FileInfo fileInfo;
+        fileInfo.set_owner(owner1);
+        fileInfo.set_filetype(FileType::INODE_CLONE_PAGEFILE);
+        fileInfo.set_filestatus(FileStatus::kFileFlattening);
+        fileInfo.set_clonesource("/srcFile");
+        FileInfo srcFileInfo;
+        srcFileInfo.set_filetype(FileType::INODE_PAGEFILE);
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(fileInfo),
+                    Return(StoreStatus::OK)))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)));
+        std::shared_ptr<FlattenTask> task = std::make_shared<FlattenTask>(
+                0, "", FileInfo(), FileInfo(), nullptr);
+        EXPECT_CALL(*mockFlattenManager_, GetFlattenTask(_))
+            .WillOnce(Return(task));
+        ASSERT_EQ(StatusCode::kOK,
+                curvefs_->Flatten(fileName, owner1));
+    }
+    // check file status already flattening, but task not exist,
+    // means flatten just finished
+    {
+        std::string fileName = "/clone1";
+        std::string owner1 = "owner1";
+        FileInfo fileInfo;
+        fileInfo.set_owner(owner1);
+        fileInfo.set_filetype(FileType::INODE_CLONE_PAGEFILE);
+        fileInfo.set_filestatus(FileStatus::kFileFlattening);
+        fileInfo.set_clonesource("/srcFile");
+        FileInfo srcFileInfo;
+        srcFileInfo.set_filetype(FileType::INODE_PAGEFILE);
+
+        FileInfo fileInfo2;
+        fileInfo2.set_owner(owner1);
+        fileInfo2.set_filetype(FileType::INODE_PAGEFILE);
+        fileInfo2.set_filestatus(FileStatus::kFileCreated);
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(fileInfo),
+                    Return(StoreStatus::OK)))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(fileInfo2),
+                    Return(StoreStatus::OK)));
+        std::shared_ptr<FlattenTask> task = std::make_shared<FlattenTask>(
+                0, "", FileInfo(), FileInfo(), nullptr);
+        EXPECT_CALL(*mockFlattenManager_, GetFlattenTask(_))
+            .WillOnce(Return(nullptr));
+        ASSERT_EQ(StatusCode::kOK,
+                curvefs_->Flatten(fileName, owner1));
+    }
+    // check file status already flattening, but task not exist,
+    // but get fileInfo again fail
+    {
+        std::string fileName = "/clone1";
+        std::string owner1 = "owner1";
+        FileInfo fileInfo;
+        fileInfo.set_owner(owner1);
+        fileInfo.set_filetype(FileType::INODE_CLONE_PAGEFILE);
+        fileInfo.set_filestatus(FileStatus::kFileFlattening);
+        fileInfo.set_clonesource("/srcFile");
+        FileInfo srcFileInfo;
+        srcFileInfo.set_filetype(FileType::INODE_PAGEFILE);
+
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(fileInfo),
+                    Return(StoreStatus::OK)))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)))
+            .WillOnce(Return(StoreStatus::InternalError));
+        std::shared_ptr<FlattenTask> task = std::make_shared<FlattenTask>(
+                0, "", FileInfo(), FileInfo(), nullptr);
+        EXPECT_CALL(*mockFlattenManager_, GetFlattenTask(_))
+            .WillOnce(Return(nullptr));
+        ASSERT_EQ(StatusCode::kStorageError,
+                curvefs_->Flatten(fileName, owner1));
+    }
+    // check file status already flattening, but task not exist,
+    // but get fileInfo type check fail
+    {
+        std::string fileName = "/clone1";
+        std::string owner1 = "owner1";
+        FileInfo fileInfo;
+        fileInfo.set_owner(owner1);
+        fileInfo.set_filetype(FileType::INODE_CLONE_PAGEFILE);
+        fileInfo.set_filestatus(FileStatus::kFileFlattening);
+        fileInfo.set_clonesource("/srcFile");
+        FileInfo srcFileInfo;
+        srcFileInfo.set_filetype(FileType::INODE_PAGEFILE);
+
+        FileInfo fileInfo2;
+        fileInfo2.set_owner(owner1);
+        fileInfo2.set_filetype(FileType::INODE_DIRECTORY);
+        fileInfo2.set_filestatus(FileStatus::kFileCreated);
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(fileInfo),
+                    Return(StoreStatus::OK)))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(fileInfo2),
+                    Return(StoreStatus::OK)));
+        std::shared_ptr<FlattenTask> task = std::make_shared<FlattenTask>(
+                0, "", FileInfo(), FileInfo(), nullptr);
+        EXPECT_CALL(*mockFlattenManager_, GetFlattenTask(_))
+            .WillOnce(Return(nullptr));
+        ASSERT_EQ(StatusCode::kFileTypeInvalid,
+                curvefs_->Flatten(fileName, owner1));
+    }
+    // get snapshot file fail
+    {
+        std::string fileName = "/clone1";
+        std::string owner1 = "owner1";
+        FileInfo fileInfo;
+        fileInfo.set_owner(owner1);
+        fileInfo.set_filetype(FileType::INODE_CLONE_PAGEFILE);
+        fileInfo.set_filestatus(FileStatus::kFileCreated);
+        fileInfo.set_clonesource("/srcFile");
+        FileInfo srcFileInfo;
+        srcFileInfo.set_filetype(FileType::INODE_PAGEFILE);
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(fileInfo),
+                    Return(StoreStatus::OK)))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)))
+            .WillOnce(Return(StoreStatus::InternalError));
+        ASSERT_EQ(StatusCode::kStorageError,
+                curvefs_->Flatten(fileName, owner1));
+    }
+    // SubmitFlattenJob fail
+    {
+        std::string fileName = "/clone1";
+        std::string owner1 = "owner1";
+        uint64_t seq = 100;
+        FileInfo fileInfo;
+        fileInfo.set_owner(owner1);
+        fileInfo.set_filetype(FileType::INODE_CLONE_PAGEFILE);
+        fileInfo.set_filestatus(FileStatus::kFileCreated);
+        fileInfo.set_clonesource("/srcFile");
+        fileInfo.set_clonesn(seq);
+        FileInfo srcFileInfo;
+        srcFileInfo.set_filetype(FileType::INODE_PAGEFILE);
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(fileInfo),
+                    Return(StoreStatus::OK)))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)));
+        std::vector<FileInfo> fileInfoList;
+        FileInfo snapFileInfo;
+        snapFileInfo.set_seqnum(seq);
+        fileInfoList.push_back(snapFileInfo);
+        EXPECT_CALL(*storage_, ListSnapshotFile(_, _, _))
+        .Times(1)
+        .WillOnce(DoAll(SetArgPointee<2>(fileInfoList),
+            Return(StoreStatus::OK)));
+        EXPECT_CALL(*mockFlattenManager_, SubmitFlattenJob(_, _, _, _))
+            .WillOnce(Return(false));
+        ASSERT_EQ(StatusCode::KInternalError,
+                curvefs_->Flatten(fileName, owner1));
+    }
+    // put file fail
+    {
+        std::string fileName = "/clone1";
+        std::string owner1 = "owner1";
+        uint64_t seq = 100;
+        FileInfo fileInfo;
+        fileInfo.set_owner(owner1);
+        fileInfo.set_filetype(FileType::INODE_CLONE_PAGEFILE);
+        fileInfo.set_filestatus(FileStatus::kFileCreated);
+        fileInfo.set_clonesource("/srcFile");
+        fileInfo.set_clonesn(seq);
+        FileInfo srcFileInfo;
+        srcFileInfo.set_filetype(FileType::INODE_PAGEFILE);
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(fileInfo),
+                    Return(StoreStatus::OK)))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)));
+        std::vector<FileInfo> fileInfoList;
+        FileInfo snapFileInfo;
+        snapFileInfo.set_seqnum(seq);
+        fileInfoList.push_back(snapFileInfo);
+        EXPECT_CALL(*storage_, ListSnapshotFile(_, _, _))
+        .Times(1)
+        .WillOnce(DoAll(SetArgPointee<2>(fileInfoList),
+            Return(StoreStatus::OK)));
+        EXPECT_CALL(*mockFlattenManager_, SubmitFlattenJob(_, _, _, _))
+            .WillOnce(Return(true));
+        EXPECT_CALL(*storage_, PutFile(_))
+            .WillOnce(Return(StoreStatus::InternalError));
+        ASSERT_EQ(StatusCode::kStorageError,
+                curvefs_->Flatten(fileName, owner1));
+    }
+    // flatten success
+    {
+        std::string fileName = "/clone1";
+        std::string owner1 = "owner1";
+        uint64_t seq = 100;
+        FileInfo fileInfo;
+        fileInfo.set_owner(owner1);
+        fileInfo.set_filetype(FileType::INODE_CLONE_PAGEFILE);
+        fileInfo.set_filestatus(FileStatus::kFileCreated);
+        fileInfo.set_clonesource("/srcFile");
+        fileInfo.set_clonesn(seq);
+        FileInfo srcFileInfo;
+        srcFileInfo.set_filetype(FileType::INODE_PAGEFILE);
+        EXPECT_CALL(*storage_, GetFile(_, _, _))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(fileInfo),
+                    Return(StoreStatus::OK)))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)))
+            .WillOnce(DoAll(
+                    SetArgPointee<2>(srcFileInfo),
+                    Return(StoreStatus::OK)));
+        std::vector<FileInfo> fileInfoList;
+        FileInfo snapFileInfo;
+        snapFileInfo.set_seqnum(seq);
+        fileInfoList.push_back(snapFileInfo);
+        EXPECT_CALL(*storage_, ListSnapshotFile(_, _, _))
+        .Times(1)
+        .WillOnce(DoAll(SetArgPointee<2>(fileInfoList),
+            Return(StoreStatus::OK)));
+        EXPECT_CALL(*mockFlattenManager_, SubmitFlattenJob(_, _, _, _))
+            .WillOnce(Return(true));
+        EXPECT_CALL(*storage_, PutFile(_))
+            .WillOnce(Return(StoreStatus::OK));
+        ASSERT_EQ(StatusCode::kOK,
+                curvefs_->Flatten(fileName, owner1));
     }
 }
 
