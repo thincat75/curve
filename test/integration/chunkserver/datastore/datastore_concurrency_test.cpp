@@ -42,13 +42,28 @@ TEST_F(ConcurrencyTestSuit, ConcurrencyTest) {
     Atomic<SequenceNum> sn(1);
     static unsigned int seed = 1;
 
+    uint64_t fileId = 1;
+    uint64_t cloneFileId = 2;
+    std::vector<SequenceNum> snaps;
+    snaps.clear();
+
+    std::shared_ptr<SnapContext> context = std::make_shared<SnapContext>(snaps);
+
+    CloneContext clonectx;
+    clonectx.rootId = fileId;
+    std::vector<struct CloneInfos> infos;
+    infos.clear();
+
     const int kLoopNum = 10;
     const int kThreadNum = 10;
 
     auto readFunc = [&](ChunkID id) {
         // 五分之一概率增加版本号
-        if (rand_r(&seed) % 5 == 0)
+        if (rand_r(&seed) % 5 == 0) {
+            snaps.push_back(sn);
             ++sn;
+            context = std::make_shared<SnapContext>(snaps);
+        }
         uint64_t pageIndex = rand_r(&seed) % (CHUNK_SIZE / PAGE_SIZE);
         offset = pageIndex * PAGE_SIZE;
         dataStore_->ReadChunk(id, sn, buf, offset, length);

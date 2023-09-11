@@ -122,6 +122,13 @@ CSSnapshot::CSSnapshot(std::shared_ptr<LocalFileSystem> lfs,
       cloneNo_ (options.cloneNo) {
     CHECK(!baseDir_.empty()) << "Create snapshot failed";
     CHECK(lfs_ != nullptr) << "Create snapshot failed";
+
+    //if the blockSize == 0, than use the default size 4096
+    if (0 == blockSize_) {
+        blockSize_ = 4096; //default block size is 4096
+        DVLOG(3) << "CSSnapshot() blockSize_ is 0, use default size 4096";
+    }
+
     uint32_t bits = size_ / blockSize_;
     metaPage_.bitmap = std::make_shared<Bitmap>(bits);
     metaPage_.sn = options.sn;
