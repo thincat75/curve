@@ -89,19 +89,6 @@ CSChunkFile_V2::CSChunkFile_V2(std::shared_ptr<LocalFileSystem> lfs,
 }
 
 CSChunkFile_V2::~CSChunkFile_V2() {
-<<<<<<< HEAD
-=======
-    if (fd_ >= 0) {
-        lfs_->Close(fd_);
-    }
-
-    if (metric_ != nullptr) {
-        metric_->chunkFileCount << -1;
-        if (isCloneChunk_) {
-            metric_->cloneChunkCount << -1;
-        }
-    }
->>>>>>> 21d62f95 (fix unit test error in chunkserver_clone_recover.cpp)
 }
 
 CSErrorCode CSChunkFile_V2::Open(bool createFile) {
